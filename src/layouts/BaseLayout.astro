@@ -40,14 +40,14 @@ const base = import.meta.env.BASE_URL;
   </head>
 
   <body class="min-h-screen flex flex-col">
-    <header class="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <header id="site-header" class="fixed top-0 inset-x-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)] backdrop-blur-sm transition-transform duration-300">
       <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href={base} class="font-semibold hover:text-[var(--color-accent)] transition-colors">sentinel2-lab</a>
         <ThemeToggle />
       </div>
     </header>
 
-    <main class="flex-1">
+    <main class="flex-1 pt-[57px]">
       <slot />
     </main>
 
@@ -56,5 +56,49 @@ const base = import.meta.env.BASE_URL;
         Учебные материалы по ДЗЗ · {new Date().getFullYear()}
       </div>
     </footer>
+
+    <button
+      id="back-to-top"
+      aria-label="Прокрутить наверх"
+      class="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-[var(--color-accent)] text-white shadow-lg opacity-0 pointer-events-none transition-opacity duration-300"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
+    </button>
+
+    <script>
+      const header = document.getElementById('site-header');
+      const btn = document.getElementById('back-to-top');
+      let lastY = window.scrollY;
+
+      window.addEventListener('scroll', () => {
+        const y = window.scrollY;
+
+        // Шапка: прятать при скролле вниз, показывать при скролле вверх
+        if (y < 10) {
+          header?.classList.remove('-translate-y-full');
+        } else if (y > lastY) {
+          header?.classList.add('-translate-y-full');
+        } else {
+          header?.classList.remove('-translate-y-full');
+        }
+
+        // Кнопка «наверх»: показывать после 300px
+        if (y > 300) {
+          btn?.classList.remove('opacity-0', 'pointer-events-none');
+          btn?.classList.add('opacity-100');
+        } else {
+          btn?.classList.add('opacity-0', 'pointer-events-none');
+          btn?.classList.remove('opacity-100');
+        }
+
+        lastY = y;
+      }, { passive: true });
+
+      btn?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    </script>
   </body>
 </html>

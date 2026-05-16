@@ -51,7 +51,7 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
           </nav>
         </details>
 
-        <nav class="hidden lg:block sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto" aria-label="Содержание">
+        <nav class="hidden lg:block sticky top-[73px] max-h-[calc(100vh-73px-1rem)] overflow-y-auto" aria-label="Содержание">
           <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Содержание</p>
           <ul class="space-y-2 text-sm">
             {tocHeadings.map(h => (
