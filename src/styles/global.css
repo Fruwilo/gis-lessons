@@ -1,0 +1,122 @@
+/* ======================================
+   Шрифты: Inter + JetBrains Mono
+   ====================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ======================================
+   Tailwind CSS
+   ====================================== */
+@import "tailwindcss";
+
+/* Плагин для prose-стилей (статьи, уроки) */
+@plugin "@tailwindcss/typography";
+
+/* Меняем поведение "dark:" в Tailwind: теперь он реагирует на data-theme="dark" */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* ======================================
+   Настройка Tailwind: шрифты
+   ====================================== */
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ======================================
+   ПАЛИТРА: светлая тема (по умолчанию)
+   ====================================== */
+:root {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4f4f5;
+
+  --color-text: #18181b;
+  --color-text-muted: #52525b;
+
+  --color-border: #e4e4e7;
+
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-muted: #eef2ff;
+
+  --color-success: #10b981;
+  --color-success-muted: #ecfdf5;
+  --color-warning: #f59e0b;
+  --color-warning-muted: #fffbeb;
+  --color-info: #3b82f6;
+  --color-info-muted: #eff6ff;
+  --color-attention: #f97316;
+  --color-attention-muted: #fff7ed;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ======================================
+   ПАЛИТРА: тёмная тема
+   Включается атрибутом data-theme="dark" на <html>
+   ====================================== */
+[data-theme="dark"] {
+  --color-bg: #0a0a0f;
+  --color-surface: #14141b;
+  --color-surface-muted: #1c1c24;
+
+  --color-text: #fafafa;
+  --color-text-muted: #a1a1aa;
+
+  --color-border: #27272a;
+
+  --color-accent: #818cf8;
+  --color-accent-hover: #a5b4fc;
+  --color-accent-muted: #1e1b4b;
+
+  --color-success: #34d399;
+  --color-success-muted: #022c22;
+  --color-warning: #fbbf24;
+  --color-warning-muted: #2a1f05;
+  --color-info: #60a5fa;
+  --color-info-muted: #0f1f3a;
+  --color-attention: #fb923c;
+  --color-attention-muted: #2a1506;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ======================================
+   Регистрируем цвета в Tailwind
+   ====================================== */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-border: var(--color-border);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-muted: var(--color-accent-muted);
+  --color-success: var(--color-success);
+  --color-success-muted: var(--color-success-muted);
+  --color-warning: var(--color-warning);
+  --color-warning-muted: var(--color-warning-muted);
+  --color-info: var(--color-info);
+  --color-info-muted: var(--color-info-muted);
+  --color-attention: var(--color-attention);
+  --color-attention-muted: var(--color-attention-muted);
+}
+
+/* ======================================
+   Базовые стили страницы
+   ====================================== */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

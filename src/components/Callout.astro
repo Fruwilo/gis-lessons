@@ -1,0 +1,37 @@
+---
+// ====================================================
+// Callout.astro — цветной блок-врезка
+// Использование в уроке (.mdx):
+//   <Callout type="tip">Текст совета</Callout>
+//   <Callout type="warning" title="Осторожно">...</Callout>
+// ====================================================
+
+interface Props {
+  type?: 'tip' | 'warning' | 'info' | 'attention';
+  title?: string;
+}
+
+const { type = 'info', title } = Astro.props;
+
+// Для каждого типа: цвет (имя CSS-переменной), эмодзи, заголовок по умолчанию
+const config = {
+  tip:       { color: 'success',   icon: '💡', label: 'Совет' },
+  warning:   { color: 'warning',   icon: '⚠️', label: 'Важно' },
+  info:      { color: 'info',      icon: 'ℹ️', label: 'Заметка' },
+  attention: { color: 'attention', icon: '👀', label: 'Обратите внимание' },
+};
+
+const c = config[type];
+---
+
+<aside
+  class="my-5 rounded-md border-l-4 px-4 py-3"
+  style={`border-left-color: var(--color-${c.color}); background-color: var(--color-${c.color}-muted);`}
+>
+  <div class="font-semibold mb-1">
+    <span class="mr-1">{c.icon}</span>{title ?? c.label}
+  </div>
+  <div class="text-[0.95rem] leading-relaxed">
+    <slot />
+  </div>
+</aside>

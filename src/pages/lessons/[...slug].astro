@@ -1,0 +1,39 @@
+---
+// ====================================================
+// [...slug].astro — динамическая страница урока
+// ====================================================
+// Astro вызывает getStaticPaths() при сборке, видит все .mdx в коллекции
+// и создаёт по странице на каждый. URL получается /lessons/<id-файла>/
+// ====================================================
+import { getCollection, render } from 'astro:content';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+
+// Компоненты, доступные ВНУТРИ MDX-файлов БЕЗ импорта.
+// Авторы уроков просто пишут <Callout>, <Formula>... — и оно работает.
+import Callout from '../../components/Callout.astro';
+import Formula from '../../components/Formula.astro';
+import Figure from '../../components/Figure.astro';
+import VideoEmbed from '../../components/VideoEmbed.astro';
+
+export async function getStaticPaths() {
+  const lessons = await getCollection('lessons', ({ data }) => !data.draft);
+  return lessons.map(lesson => ({
+    params: { slug: lesson.id },
+    props: { lesson },
+  }));
+}
+
+const { lesson } = Astro.props;
+const { Content, headings } = await render(lesson);
+---
+
+<LessonLayout
+  title={lesson.data.title}
+  description={lesson.data.description}
+  duration={lesson.data.duration}
+  tools={lesson.data.tools}
+  difficulty={lesson.data.difficulty}
+  headings={headings}
+>
+  <Content components={{ Callout, Formula, Figure, VideoEmbed }} />
+</LessonLayout>

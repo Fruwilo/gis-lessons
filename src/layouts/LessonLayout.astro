@@ -1,0 +1,104 @@
+---
+// ====================================================
+// LessonLayout.astro — макет страницы урока
+// ====================================================
+// На десктопе: оглавление слева sticky, контент справа.
+// На мобильных: оглавление сворачивается в <details> над контентом.
+// ====================================================
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  duration: string;
+  tools: string[];
+  difficulty?: string;
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { title, description, duration, tools, difficulty, headings } = Astro.props;
+
+// В TOC показываем только h2 и h3
+const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
+---
+
+<BaseLayout title={title} description={description}>
+  <article class="max-w-6xl mx-auto px-6 py-10">
+    <header class="mb-10">
+      <div class="flex flex-wrap gap-2 mb-4 text-xs">
+        <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">{duration}</span>
+        {tools.map(tool => (
+          <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">{tool}</span>
+        ))}
+        {difficulty && (
+          <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">{difficulty}</span>
+        )}
+      </div>
+      <h1 class="text-4xl font-bold tracking-tight mb-4">{title}</h1>
+      <p class="text-lg text-[var(--color-text-muted)]">{description}</p>
+    </header>
+
+    <div class="lg:grid lg:grid-cols-[220px_1fr] lg:gap-12">
+      <aside class="mb-8 lg:mb-0">
+        <details class="lg:hidden border border-[var(--color-border)] rounded-md">
+          <summary class="px-4 py-2 font-semibold cursor-pointer select-none">Содержание</summary>
+          <nav class="px-4 pb-3">
+            <ul class="space-y-1 text-sm">
+              {tocHeadings.map(h => (
+                <li class:list={[h.depth === 3 && 'ml-3']}><a href={`#${h.slug}`} class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)]">{h.text}</a></li>
+              ))}
+            </ul>
+          </nav>
+        </details>
+
+        <nav class="hidden lg:block sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto" aria-label="Содержание">
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Содержание</p>
+          <ul class="space-y-2 text-sm">
+            {tocHeadings.map(h => (
+              <li class:list={[h.depth === 3 && 'ml-3']}><a href={`#${h.slug}`} data-toc-link={h.slug} class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">{h.text}</a></li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+
+      <div class="prose prose-zinc dark:prose-invert max-w-none">
+        <slot />
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<script>
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]');
+  if (links.length > 0) {
+    const idToLink = new Map<string, HTMLAnchorElement>();
+    links.forEach(link => {
+      const id = link.getAttribute('data-toc-link');
+      if (id) idToLink.set(id, link);
+    });
+
+    const headingEls = Array.from(idToLink.keys())
+      .map(id => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    const inView = new Set<string>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          const id = e.target.id;
+          if (e.isIntersecting) inView.add(id); else inView.delete(id);
+        });
+        const orderedIds = Array.from(idToLink.keys());
+        const active = orderedIds.find(id => inView.has(id));
+        links.forEach(l => l.classList.remove('text-[var(--color-accent)]', 'font-medium'));
+        if (active) {
+          idToLink.get(active)!.classList.add('text-[var(--color-accent)]', 'font-medium');
+        }
+      },
+      { rootMargin: '-10% 0px -75% 0px' }
+    );
+
+    headingEls.forEach(h => observer.observe(h));
+  }
+</script>

@@ -1,0 +1,25 @@
+---
+// ====================================================
+// Formula.astro — блок с формулой (моноширинный, по центру)
+// Использование:
+//   <Formula>NDVI = (B08 − B04) / (B08 + B04)</Formula>
+//   <Formula variant="success" big>...</Formula>
+// ====================================================
+
+interface Props {
+  variant?: 'accent' | 'success' | 'attention';
+  big?: boolean;
+}
+
+const { variant = 'accent', big = false } = Astro.props;
+---
+
+<div
+  class:list={[
+    'my-4 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-center font-mono',
+    big ? 'text-lg' : 'text-base',
+  ]}
+  style={`border-left: 4px solid var(--color-${variant});`}
+>
+  <slot />
+</div>

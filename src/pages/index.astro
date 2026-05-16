@@ -1,0 +1,83 @@
+---
+// ====================================================
+// index.astro — главная: список уроков
+// ====================================================
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const rawLessons = await getCollection('lessons', ({ data }) => !data.draft);
+rawLessons.sort((a, b) => (a.data.order ?? 999) - (b.data.order ?? 999));
+
+const base = import.meta.env.BASE_URL;
+
+function buildUrl(path) {
+  if (!path) return null;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return cleanBase + '/' + cleanPath;
+}
+
+// Готовим ПЛОСКИЕ карточки — в шаблоне только {card.field}, без deep-access
+const cards = rawLessons.map(lesson => ({
+  href: base + 'lessons/' + lesson.id + '/',
+  cover: buildUrl(lesson.data.cover),
+  title: lesson.data.title,
+  description: lesson.data.description,
+  duration: lesson.data.duration,
+  tools: lesson.data.tools,
+  difficulty: lesson.data.difficulty,
+}));
+---
+
+<BaseLayout title="sentinel2-lab — учебные материалы">
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <h1 class="text-4xl font-bold tracking-tight mb-4">Учебные материалы</h1>
+    <p class="text-lg text-[var(--color-text-muted)] max-w-2xl">
+      Пошаговые практические занятия по дистанционному зондированию
+      и работе с геоданными в QGIS.
+    </p>
+  </section>
+
+  <section class="max-w-4xl mx-auto px-6 pb-16">
+    <h2 class="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-6">
+      Занятия
+    </h2>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+      {cards.map((card) => (
+        <a
+          href={card.href}
+          class="group block rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
+        >
+          <div class="aspect-video bg-[var(--color-surface-muted)] flex items-center justify-center text-[var(--color-text-muted)] text-sm overflow-hidden">
+            {card.cover ? (
+              <img src={card.cover} alt="" class="w-full h-full object-cover" />
+            ) : (
+              <span>превью скоро</span>
+            )}
+          </div>
+
+          <div class="p-5">
+            <h3 class="font-semibold mb-2 group-hover:text-[var(--color-accent)] transition-colors">
+              {card.title}
+            </h3>
+            <p class="text-sm text-[var(--color-text-muted)] mb-4">
+              {card.description}
+            </p>
+            <div class="flex flex-wrap gap-2 text-xs text-[var(--color-text-muted)]">
+              <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)]">{card.duration}</span>
+              {card.tools.map((tool) => (
+                <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)]">{tool}</span>
+              ))}
+              {card.difficulty && (
+                <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">
+                  {card.difficulty}
+                </span>
+              )}
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

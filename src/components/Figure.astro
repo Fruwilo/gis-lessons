@@ -1,0 +1,48 @@
+---
+// ====================================================
+// Figure.astro — картинка с подписью, увеличение по клику
+// Использование:
+//   <Figure src="images/sentinel2-qgis/01-channels.png"
+//           alt="Каналы в QGIS"
+//           caption="Четыре канала загружены" />
+// src — путь внутри папки public/ (с ведущим / или без —不 важно)
+// ====================================================
+import mediumZoom from 'medium-zoom';
+
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
+const { src, alt, caption } = Astro.props;
+
+// Собираем полный путь с учётом подпапки сайта (/sentinel2-lab/)
+const base = import.meta.env.BASE_URL;
+const url = base.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
+---
+
+<figure class="my-6">
+  <img
+    src={url}
+    alt={alt}
+    loading="lazy"
+    data-zoomable
+    class="rounded-md border border-[var(--color-border)] mx-auto cursor-zoom-in"
+  />
+  {caption && (
+    <figcaption class="mt-2 text-center text-sm text-[var(--color-text-muted)] italic">
+      {caption}
+    </figcaption>
+  )}
+</figure>
+
+<script>
+  // Подключаем зум ко всем картинкам с атрибутом data-zoomable.
+  // Astro выполнит этот скрипт один раз, даже если Figure на странице много.
+  import mediumZoom from 'medium-zoom';
+  mediumZoom('[data-zoomable]', {
+    background: 'rgba(0, 0, 0, 0.85)',
+    margin: 24,
+  });
+</script>

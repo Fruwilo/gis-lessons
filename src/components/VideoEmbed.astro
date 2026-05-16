@@ -1,0 +1,37 @@
+---
+// ====================================================
+// VideoEmbed.astro — встраивание видео
+// Использование:
+//   <VideoEmbed provider="youtube" id="dQw4w9WgXcQ" />
+//   <VideoEmbed provider="rutube" id="abc123def456" title="Название" />
+// id — это код из адреса видео (для YouTube — после v=, для RuTube — из /video/КОД/)
+// ====================================================
+
+interface Props {
+  provider: 'youtube' | 'rutube';
+  id: string;
+  title?: string;
+}
+
+const { provider, id, title = 'Видео' } = Astro.props;
+
+// Адрес для встраивания зависит от платформы
+const src =
+  provider === 'youtube'
+    ? `https://www.youtube-nocookie.com/embed/${id}`
+    : `https://rutube.ru/play/embed/${id}`;
+---
+
+<div class="my-6 overflow-hidden rounded-md border border-[var(--color-border)]">
+  <!-- padding-bottom: 56.25% держит пропорцию 16:9 на любой ширине -->
+  <div class="relative w-full" style="padding-bottom: 56.25%;">
+    <iframe
+      src={src}
+      title={title}
+      loading="lazy"
+      allowfullscreen
+      class="absolute inset-0 h-full w-full"
+      style="border: 0;"
+    ></iframe>
+  </div>
+</div>
