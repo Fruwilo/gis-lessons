@@ -17,7 +17,7 @@ interface Props {
 
 const { src, alt, caption } = Astro.props;
 
-// Собираем полный путь с учётом подпапки сайта (/sentinel2-lab/)
+// Собираем полный путь с учётом подпапки сайта (/gis-lessons/)
 const base = import.meta.env.BASE_URL;
 const url = base.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
 ---

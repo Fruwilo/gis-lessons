@@ -10,7 +10,7 @@ export default defineConfig({
   site: 'https://fruwilo.github.io',
 
   // Подпапка, в которой живёт сайт на GitHub Pages
-  base: '/sentinel2-lab',
+  base: '/gis-lessons',
 
   // Все URL с завершающим слэшем: /lessons/ndvi/ вместо /lessons/ndvi
   trailingSlash: 'always',
