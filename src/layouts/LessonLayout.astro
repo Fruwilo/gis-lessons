@@ -23,8 +23,8 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
 ---
 
 <BaseLayout title={title} description={description}>
-  <article class="max-w-6xl mx-auto px-6 py-10">
-    <header class="mb-10">
+  <article class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <header class="mb-8 sm:mb-10">
       <div class="flex flex-wrap gap-2 mb-4 text-xs">
         <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">{duration}</span>
         {tools.map(tool => (
@@ -34,13 +34,13 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
           <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">{difficulty}</span>
         )}
       </div>
-      <h1 class="text-4xl font-bold tracking-tight mb-4">{title}</h1>
-      <p class="text-lg text-[var(--color-text-muted)]">{description}</p>
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-3 sm:mb-4">{title}</h1>
+      <p class="text-base sm:text-lg text-[var(--color-text-muted)]">{description}</p>
     </header>
 
-    <div class="lg:grid lg:grid-cols-[220px_1fr] lg:gap-12">
-      <aside class="mb-8 lg:mb-0">
-        <details class="lg:hidden border border-[var(--color-border)] rounded-md">
+    <div class="md:grid md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[220px_1fr] lg:gap-12">
+      <aside class="mb-6 md:mb-0">
+        <details class="md:hidden border border-[var(--color-border)] rounded-md">
           <summary class="px-4 py-2 font-semibold cursor-pointer select-none">Содержание</summary>
           <nav class="px-4 pb-3">
             <ul class="space-y-1 text-sm">
@@ -51,7 +51,7 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
           </nav>
         </details>
 
-        <nav class="hidden lg:block sticky top-[73px] max-h-[calc(100vh-73px-1rem)] overflow-y-auto" aria-label="Содержание">
+        <nav class="hidden md:block sticky top-[73px] max-h-[calc(100vh-73px-1rem)] overflow-y-auto" aria-label="Содержание">
           <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Содержание</p>
           <ul class="space-y-2 text-sm">
             {tocHeadings.map(h => (
