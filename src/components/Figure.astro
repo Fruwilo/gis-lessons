@@ -5,9 +5,8 @@
 //   <Figure src="images/sentinel2-qgis/01-channels.png"
 //           alt="Каналы в QGIS"
 //           caption="Четыре канала загружены" />
-// src — путь внутри папки public/ (с ведущим / или без —不 важно)
+// src — путь внутри папки public/ (с ведущим / или без — не важно)
 // ====================================================
-import mediumZoom from 'medium-zoom';
 
 interface Props {
   src: string;
@@ -23,13 +22,14 @@ const url = base.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
 ---
 
 <figure class="my-6">
-  <img
-    src={url}
-    alt={alt}
-    loading="lazy"
-    data-zoomable
-    class="rounded-md border border-[var(--color-border)] mx-auto cursor-zoom-in"
-  />
+  <a href={url} data-pswp-figure class="block">
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      class="rounded-md border border-[var(--color-border)] mx-auto cursor-zoom-in"
+    />
+  </a>
   {caption && (
     <figcaption class="mt-2 text-center text-sm text-[var(--color-text-muted)] italic">
       {caption}
@@ -38,11 +38,35 @@ const url = base.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
 </figure>
 
 <script>
-  // Подключаем зум ко всем картинкам с атрибутом data-zoomable.
-  // Astro выполнит этот скрипт один раз, даже если Figure на странице много.
-  import mediumZoom from 'medium-zoom';
-  mediumZoom('[data-zoomable]', {
-    background: 'rgba(0, 0, 0, 0.85)',
-    margin: 24,
+  import PhotoSwipeLightbox from 'photoswipe/lightbox';
+  import 'photoswipe/style.css';
+
+  // Astro дедублирует скрипты — этот блок выполняется один раз на страницу,
+  // даже если компонент Figure используется много раз.
+  const lightbox = new PhotoSwipeLightbox({
+    gallery: 'body',
+    children: 'a[data-pswp-figure]',
+    pswpModule: () => import('photoswipe'),
+    // Зум: начало — вписать в экран, двойной клик — 2×, максимум — 5×
+    initialZoomLevel: 'fit',
+    secondaryZoomLevel: 2,
+    maxZoomLevel: 5,
+    wheelToZoom: true,
   });
+
+  // Читаем размеры из уже загруженного <img> вместо data-атрибутов
+  lightbox.addFilter('domItemData', (itemData, _element, linkEl) => {
+    const img = linkEl?.querySelector('img');
+    if (img?.naturalWidth) {
+      itemData.width = img.naturalWidth;
+      itemData.height = img.naturalHeight;
+    } else if (img) {
+      // Изображение ещё не загружено — используем размеры в DOM
+      itemData.width = img.offsetWidth || 1200;
+      itemData.height = img.offsetHeight || 800;
+    }
+    return itemData;
+  });
+
+  lightbox.init();
 </script>
