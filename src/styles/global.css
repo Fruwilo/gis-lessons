@@ -120,3 +120,98 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ======================================
+   Отметки выполнения шагов урока
+   ====================================== */
+/* Кнопка-чекбокс перед заголовком шага (добавляется скриптом) */
+.step-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.45em;
+  vertical-align: -0.1em;
+  flex: none;
+  border: 2px solid var(--color-border);
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.step-check:hover {
+  border-color: var(--color-accent);
+}
+
+.step-check.is-done {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: #fff;
+}
+
+.step-check svg {
+  width: 0.6em;
+  height: 0.6em;
+}
+
+/* Кнопка "Отметить шаг выполненным" в конце шага (добавляется скриптом) */
+.step-done-btn {
+  display: block;
+  margin: 1.25rem 0 0.5rem;
+  padding: 0.45rem 1rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.step-done-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.step-done-btn.is-done {
+  border: 1px solid var(--color-success);
+  background: var(--color-success-muted);
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+/* Выполненный шаг в оглавлении: галочка перед названием */
+.toc-done::before {
+  content: '✓ ';
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* ======================================
+   Чипы-фильтры на главной странице
+   ====================================== */
+.filter-chip {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.filter-chip.is-active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  font-weight: 500;
+}

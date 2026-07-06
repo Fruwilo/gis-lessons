@@ -19,6 +19,7 @@ const lessons = defineCollection({
     duration: z.string(),                   // обязательно: "~1.5 часа" и т.п.
     tools: z.array(z.string()),             // обязательно: ["QGIS", ...]
     difficulty: z.enum(['новичок', 'средний', 'продвинутый']).optional(),
+    topics: z.array(z.string()).default([]),    // темы для фильтра на главной: ["ДЗЗ", ...]
     order: z.number().optional(),           // порядок в списке (1, 2, 3...)
     cover: z.string().optional(),           // путь к превью-картинке
     publishedAt: z.coerce.date().optional(),

@@ -20,9 +20,25 @@ const { title, description, duration, tools, difficulty, headings } = Astro.prop
 
 // В TOC показываем только h2 и h3
 const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
+
+// Группируем: каждый h2 — секция, вложенные h3 — её шаги.
+// В сайдбаре видны только секции; шаги раскрываются у той,
+// которую пользователь сейчас читает (управляет scrollspy ниже).
+type TocGroup = { slug: string; text: string; children: { slug: string; text: string }[] };
+const tocGroups: TocGroup[] = [];
+for (const h of tocHeadings) {
+  if (h.depth === 2 || tocGroups.length === 0) {
+    tocGroups.push({ slug: h.slug, text: h.text, children: [] });
+  } else {
+    tocGroups[tocGroups.length - 1].children.push({ slug: h.slug, text: h.text });
+  }
+}
 ---
 
 <BaseLayout title={title} description={description}>
+  <!-- Полоска прогресса чтения: ширина = процент прокрутки страницы -->
+  <div id="reading-progress" class="fixed top-0 left-0 h-[3px] w-0 bg-[var(--color-accent)] z-[60]"></div>
+
   <article class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
     <header class="mb-8 sm:mb-10">
       <div class="flex flex-wrap gap-2 mb-4 text-xs">
@@ -51,11 +67,31 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
           </nav>
         </details>
 
-        <nav class="hidden md:block sticky top-[73px] max-h-[calc(100vh-73px-1rem)] overflow-y-auto" aria-label="Содержание">
+        <nav class="hidden md:block sticky top-[65px] max-h-[calc(100vh-65px-1rem)] overflow-y-auto" aria-label="Содержание">
+          <!-- Прогресс по шагам урока (заполняется скриптом, если в уроке есть шаги) -->
+          <div id="lesson-progress" class="hidden mb-4">
+            <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-1.5">
+              <span class="font-semibold uppercase tracking-wider">Прогресс</span>
+              <span data-progress-text></span>
+            </div>
+            <div class="h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+              <div data-progress-bar class="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300" style="width:0%"></div>
+            </div>
+          </div>
+
           <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Содержание</p>
           <ul class="space-y-2 text-sm">
-            {tocHeadings.map(h => (
-              <li class:list={[h.depth === 3 && 'ml-3']}><a href={`#${h.slug}`} data-toc-link={h.slug} class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">{h.text}</a></li>
+            {tocGroups.map(group => (
+              <li data-toc-group={group.slug}>
+                <a href={`#${group.slug}`} data-toc-link={group.slug} class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">{group.text}</a>
+                {group.children.length > 0 && (
+                  <ul class="toc-sub hidden mt-1.5 ml-3 pl-2 border-l border-[var(--color-border)] space-y-1.5">
+                    {group.children.map(h => (
+                      <li><a href={`#${h.slug}`} data-toc-link={h.slug} class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">{h.text}</a></li>
+                    ))}
+                  </ul>
+                )}
+              </li>
             ))}
           </ul>
         </nav>
@@ -81,6 +117,27 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
       .map(id => document.getElementById(id))
       .filter((el): el is HTMLElement => el !== null);
 
+    // Секции оглавления: какой группе принадлежит каждый заголовок.
+    // Шаги (h3) видны только у активной секции — остальные свёрнуты.
+    const groupEls = Array.from(document.querySelectorAll<HTMLElement>('[data-toc-group]'));
+    const groupOfId = new Map<string, HTMLElement>();
+    groupEls.forEach(group => {
+      group.querySelectorAll<HTMLAnchorElement>('[data-toc-link]').forEach(link => {
+        const id = link.getAttribute('data-toc-link');
+        if (id) groupOfId.set(id, group);
+      });
+    });
+
+    function openGroup(activeGroup: HTMLElement | undefined) {
+      groupEls.forEach(group => {
+        group.querySelector('.toc-sub')?.classList.toggle('hidden', group !== activeGroup);
+      });
+    }
+
+    // Последний прочитанный заголовок: если ни один не в зоне видимости
+    // (читаем длинный текст между заголовками), активной остаётся секция выше.
+    let lastActive: string | null = null;
+
     const inView = new Set<string>();
 
     const observer = new IntersectionObserver(
@@ -90,15 +147,128 @@ const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
           if (e.isIntersecting) inView.add(id); else inView.delete(id);
         });
         const orderedIds = Array.from(idToLink.keys());
-        const active = orderedIds.find(id => inView.has(id));
+        const active = orderedIds.find(id => inView.has(id)) ?? lastActive;
+        if (active) lastActive = active;
         links.forEach(l => l.classList.remove('text-[var(--color-accent)]', 'font-medium'));
         if (active) {
           idToLink.get(active)!.classList.add('text-[var(--color-accent)]', 'font-medium');
+          openGroup(groupOfId.get(active));
         }
       },
       { rootMargin: '-10% 0px -75% 0px' }
     );
 
     headingEls.forEach(h => observer.observe(h));
+
+    // Клик по свёрнутой секции сразу раскрывает её шаги,
+    // не дожидаясь срабатывания observer после прокрутки.
+    links.forEach(link => {
+      link.addEventListener('click', () => {
+        const id = link.getAttribute('data-toc-link');
+        if (id) openGroup(groupOfId.get(id));
+      });
+    });
+  }
+</script>
+
+<script>
+  // ====================================================
+  // Полоска прогресса чтения (тонкая линия вверху экрана)
+  // ====================================================
+  const readingBar = document.getElementById('reading-progress');
+  if (readingBar) {
+    const update = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      readingBar.style.width = (max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0) + '%';
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+    update();
+  }
+
+  // ====================================================
+  // Отметки выполнения шагов (h3 в тексте урока)
+  // ====================================================
+  // Состояние хранится в localStorage по адресу страницы:
+  //   { done: [id, ...], total: N }
+  // Поле total нужно главной странице, чтобы показать "5 из 12".
+  const STORAGE_KEY = 'gis-lessons:progress:' + location.pathname;
+  const stepHeadings = Array.from(document.querySelectorAll<HTMLElement>('.prose h3[id]'));
+
+  if (stepHeadings.length > 0) {
+    let done: Set<string>;
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      done = new Set(Array.isArray(saved?.done) ? saved.done : []);
+    } catch {
+      done = new Set();
+    }
+    // Убираем отметки шагов, которых больше нет (урок отредактировали)
+    const validIds = new Set(stepHeadings.map(h => h.id));
+    done.forEach(id => { if (!validIds.has(id)) done.delete(id); });
+
+    const progressBox = document.getElementById('lesson-progress');
+    const progressBarEl = progressBox?.querySelector<HTMLElement>('[data-progress-bar]');
+    const progressTextEl = progressBox?.querySelector<HTMLElement>('[data-progress-text]');
+    progressBox?.classList.remove('hidden');
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ done: Array.from(done), total: stepHeadings.length }));
+    }
+
+    function refresh() {
+      stepHeadings.forEach(h => {
+        const isDone = done.has(h.id);
+        // Чекбокс у заголовка
+        h.querySelector('.step-check')?.classList.toggle('is-done', isDone);
+        // Отметка в оглавлении
+        document.querySelectorAll(`[data-toc-link="${CSS.escape(h.id)}"]`).forEach(l => l.classList.toggle('toc-done', isDone));
+      });
+      // Кнопки в конце шагов
+      document.querySelectorAll<HTMLElement>('.step-done-btn').forEach(btn => {
+        const isDone = done.has(btn.getAttribute('data-step-id') || '');
+        btn.classList.toggle('is-done', isDone);
+        btn.textContent = isDone ? '✓ Шаг выполнен' : 'Отметить шаг выполненным';
+      });
+      // Полоса прогресса в сайдбаре
+      if (progressBarEl) progressBarEl.style.width = (done.size / stepHeadings.length) * 100 + '%';
+      if (progressTextEl) progressTextEl.textContent = `${done.size} из ${stepHeadings.length}`;
+    }
+
+    function toggleStep(id: string) {
+      if (done.has(id)) done.delete(id); else done.add(id);
+      save();
+      refresh();
+    }
+
+    stepHeadings.forEach(h => {
+      // Кружок-чекбокс перед заголовком шага
+      const btn = document.createElement('button');
+      btn.className = 'step-check';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Отметить шаг выполненным');
+      btn.title = 'Отметить шаг выполненным';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      btn.addEventListener('click', () => toggleStep(h.id));
+      h.prepend(btn);
+
+      // Кнопка в конце шага — чтобы не прокручивать обратно к заголовку.
+      // Конец шага = последний элемент перед следующим h2/h3 (или конец урока).
+      let last: Element = h;
+      let sib = h.nextElementSibling;
+      while (sib && !/^H[23]$/.test(sib.tagName)) {
+        last = sib;
+        sib = sib.nextElementSibling;
+      }
+      const endBtn = document.createElement('button');
+      endBtn.className = 'step-done-btn';
+      endBtn.type = 'button';
+      endBtn.setAttribute('data-step-id', h.id);
+      endBtn.addEventListener('click', () => toggleStep(h.id));
+      last.after(endBtn);
+    });
+
+    save(); // фиксируем total и чистку удалённых шагов
+    refresh();
   }
 </script>

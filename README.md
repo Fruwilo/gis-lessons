@@ -1,43 +1,56 @@
-# Astro Starter Kit: Minimal
+# gis-lessons
 
-```sh
-npm create astro@latest -- --template minimal
+Учебные материалы по дистанционному зондированию и QGIS.
+Статический сайт на [Astro](https://astro.build) + Tailwind CSS, публикуется на GitHub Pages.
+
+## Команды
+
+| Команда           | Действие                                    |
+| :---------------- | :------------------------------------------ |
+| `npm install`     | Установить зависимости                       |
+| `npm run dev`     | Дев-сервер на `localhost:4321`               |
+| `npm run build`   | Собрать сайт в `./dist/`                     |
+| `npm run preview` | Посмотреть собранный сайт локально           |
+
+## Как добавить урок
+
+1. Создайте `src/content/lessons/<имя-урока>.mdx`.
+2. Заполните frontmatter (схема — в `src/content.config.ts`):
+
+```yaml
+---
+title: "Название урока"
+description: "Короткое описание для карточки на главной."
+duration: "~1.5 часа"
+tools: ["QGIS"]
+difficulty: "новичок"          # новичок | средний | продвинутый
+topics: ["ДЗЗ", "растровый анализ"]   # темы для фильтра на главной
+order: 3                        # порядок в списке уроков
+cover: "images/<урок>/превью.png"
+---
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+3. Картинки кладите в `public/images/<имя-урока>/`.
 
-## 🚀 Project Structure
+### Компоненты в MDX (доступны без импорта)
 
-Inside of your Astro project, you'll see the following folders and files:
+`<Callout type="info|tip|attention" title="...">`, `<Figure>`, `<Formula>`, `<VideoEmbed>` —
+см. `src/components/`.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+### Короткие названия для оглавления
+
+Длинный заголовок шага можно сократить для сайдбара маркером `||`:
+
+```md
+### Шаг 2 — Добавьте подложку Yandex через QuickMapServices || Шаг 2. Подложка Yandex
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+На странице останется полный текст (до `||`), в оглавлении — короткий.
+Якорь (`#id`) строится по полному тексту, поэтому добавление короткого имени
+не ломает существующие ссылки. Реализация: `src/plugins/remark-toc-labels.mjs`.
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+### Прогресс читателя
 
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+У каждого шага (заголовок `h3`) появляется кружок-чекбокс. Отметки хранятся
+в localStorage браузера читателя; прогресс виден в сайдбаре урока и на
+карточках главной страницы. Серверного хранения нет.

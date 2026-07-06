@@ -26,7 +26,12 @@ const cards = rawLessons.map(lesson => ({
   duration: lesson.data.duration,
   tools: lesson.data.tools,
   difficulty: lesson.data.difficulty,
+  topics: lesson.data.topics,
 }));
+
+// Значения для панели фильтров — собираем из самих уроков
+const allTopics = [...new Set(cards.flatMap(c => c.topics))].sort();
+const allDifficulties = [...new Set(cards.map(c => c.difficulty).filter(Boolean))];
 ---
 
 <BaseLayout title="gis-lessons — учебные материалы">
@@ -43,10 +48,35 @@ const cards = rawLessons.map(lesson => ({
       Занятия
     </h2>
 
+    <!-- Фильтры: тема и сложность. Кнопка "все" сбрасывает измерение. -->
+    <div class="mb-8 space-y-3" id="lesson-filters">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-[var(--color-text-muted)] w-20 shrink-0">Тема</span>
+        <button type="button" data-filter="topic" data-value="" class="filter-chip is-active">все</button>
+        {allTopics.map(topic => (
+          <button type="button" data-filter="topic" data-value={topic} class="filter-chip">{topic}</button>
+        ))}
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-[var(--color-text-muted)] w-20 shrink-0">Сложность</span>
+        <button type="button" data-filter="difficulty" data-value="" class="filter-chip is-active">все</button>
+        {allDifficulties.map(d => (
+          <button type="button" data-filter="difficulty" data-value={d} class="filter-chip">{d}</button>
+        ))}
+      </div>
+    </div>
+
+    <p id="no-results" class="hidden text-sm text-[var(--color-text-muted)]">
+      По выбранным фильтрам занятий нет — попробуйте сбросить фильтры.
+    </p>
+
     <div class="grid gap-6 sm:grid-cols-2">
       {cards.map((card) => (
         <a
           href={card.href}
+          data-progress-path={card.href}
+          data-topics={card.topics.join('|')}
+          data-difficulty={card.difficulty ?? ''}
           class="group block rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
         >
           <div class="aspect-video bg-[var(--color-surface-muted)] flex items-center justify-center text-[var(--color-text-muted)] text-sm overflow-hidden">
@@ -75,9 +105,80 @@ const cards = rawLessons.map(lesson => ({
                 </span>
               )}
             </div>
+
+            <!-- Прогресс по уроку: заполняется скриптом из localStorage,
+                 показывается только если пользователь уже отмечал шаги -->
+            <div class="hidden mt-4" data-progress-slot>
+              <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-1">
+                <span>Пройдено</span>
+                <span data-progress-text></span>
+              </div>
+              <div class="h-1 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
+                <div data-progress-bar class="h-full rounded-full bg-[var(--color-accent)]" style="width:0%"></div>
+              </div>
+            </div>
           </div>
         </a>
       ))}
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  // Показываем на карточках прогресс из localStorage —
+  // тем же ключом его сохраняет страница урока (LessonLayout).
+  document.querySelectorAll<HTMLElement>('[data-progress-path]').forEach(card => {
+    const key = 'gis-lessons:progress:' + card.getAttribute('data-progress-path');
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      const doneCount = Array.isArray(saved?.done) ? saved.done.length : 0;
+      const total = typeof saved?.total === 'number' ? saved.total : 0;
+      if (doneCount === 0 || total === 0) return;
+
+      const slot = card.querySelector<HTMLElement>('[data-progress-slot]');
+      const bar = slot?.querySelector<HTMLElement>('[data-progress-bar]');
+      const text = slot?.querySelector<HTMLElement>('[data-progress-text]');
+      if (!slot || !bar || !text) return;
+
+      bar.style.width = Math.min(100, (doneCount / total) * 100) + '%';
+      text.textContent = doneCount >= total ? 'урок пройден ✓' : `${doneCount} из ${total} шагов`;
+      slot.classList.remove('hidden');
+    } catch { /* повреждённые данные в localStorage — просто не показываем */ }
+  });
+</script>
+
+<script>
+  // Фильтрация карточек по теме и сложности.
+  // Внутри одного измерения выбор одиночный ("все" — сброс),
+  // между измерениями — условие И.
+  const filterButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-filter]'));
+  const lessonCards = Array.from(document.querySelectorAll<HTMLElement>('[data-topics]'));
+  const noResults = document.getElementById('no-results');
+
+  const selected: Record<string, string> = { topic: '', difficulty: '' };
+
+  function applyFilters() {
+    let visible = 0;
+    lessonCards.forEach(card => {
+      const topics = (card.getAttribute('data-topics') || '').split('|');
+      const difficulty = card.getAttribute('data-difficulty') || '';
+      const show =
+        (!selected.topic || topics.includes(selected.topic)) &&
+        (!selected.difficulty || difficulty === selected.difficulty);
+      card.classList.toggle('hidden', !show);
+      if (show) visible++;
+    });
+    noResults?.classList.toggle('hidden', visible > 0);
+  }
+
+  filterButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dim = btn.getAttribute('data-filter')!;
+      selected[dim] = btn.getAttribute('data-value') || '';
+      filterButtons
+        .filter(b => b.getAttribute('data-filter') === dim)
+        .forEach(b => b.classList.toggle('is-active', b === btn));
+      applyFilters();
+    });
+  });
+</script>

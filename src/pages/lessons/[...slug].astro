@@ -24,7 +24,13 @@ export async function getStaticPaths() {
 }
 
 const { lesson } = Astro.props;
-const { Content, headings } = await render(lesson);
+const { Content, headings, remarkPluginFrontmatter } = await render(lesson);
+
+// Короткие названия для оглавления (из remark-toc-labels):
+// массив идёт в том же порядке, что и headings, — сшиваем по индексу.
+// null означает "короткого имени нет — показываем полный заголовок".
+const tocLabels = remarkPluginFrontmatter?.tocLabels ?? [];
+const tocHeadings = headings.map((h, i) => ({ ...h, text: tocLabels[i] ?? h.text }));
 ---
 
 <LessonLayout
@@ -33,7 +39,7 @@ const { Content, headings } = await render(lesson);
   duration={lesson.data.duration}
   tools={lesson.data.tools}
   difficulty={lesson.data.difficulty}
-  headings={headings}
+  headings={tocHeadings}
 >
   <Content components={{ Callout, Formula, Figure, VideoEmbed }} />
 </LessonLayout>
