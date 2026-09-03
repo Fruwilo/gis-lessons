@@ -13,10 +13,11 @@ interface Props {
   duration: string;
   tools: string[];
   difficulty?: string;
+  qgis?: string;
   headings: { depth: number; slug: string; text: string }[];
 }
 
-const { title, description, duration, tools, difficulty, headings } = Astro.props;
+const { title, description, duration, tools, difficulty, qgis, headings } = Astro.props;
 
 // В TOC показываем только h2 и h3
 const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
@@ -48,6 +49,14 @@ for (const h of tocHeadings) {
         ))}
         {difficulty && (
           <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">{difficulty}</span>
+        )}
+        {/* Версия QGIS: в других версиях пункты меню называются иначе,
+            поэтому она должна быть видна сразу, а не в тексте урока */}
+        {qgis && (
+          <span
+            class="px-2 py-1 rounded-full font-mono"
+            style="background-color: var(--color-warning-muted); color: var(--color-warning);"
+          >QGIS {qgis}</span>
         )}
       </div>
       <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-3 sm:mb-4">{title}</h1>

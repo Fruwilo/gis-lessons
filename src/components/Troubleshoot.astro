@@ -1,0 +1,64 @@
+---
+// ====================================================
+// Troubleshoot.astro — «Если не получилось»
+//
+// Свёрнутый блок с типовыми ошибками шага. Закрыт по умолчанию,
+// чтобы не мешать тем, у кого всё вышло.
+//
+// Использование в .mdx:
+//   <Troubleshoot>
+//   **Пункта «Веб» нет в меню.** Модуль не установился…
+//
+//   **Подложка не грузится.** Попробуйте OSM Standard.
+//   </Troubleshoot>
+// ====================================================
+
+interface Props {
+  /** Заголовок, если нужен свой */
+  title?: string;
+  /** Раскрыть сразу */
+  open?: boolean;
+}
+
+const { title = 'Если не получилось', open = false } = Astro.props;
+---
+
+<details class="troubleshoot my-6 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]" open={open}>
+  <summary
+    class="flex items-center gap-2 px-4 py-3 cursor-pointer select-none font-medium
+           rounded-lg hover:bg-[var(--color-surface-muted)] transition-colors
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+    style="outline-color: var(--color-attention);"
+  >
+    <svg
+      class="chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      style="color: var(--color-attention);" aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+    <span>{title}</span>
+  </summary>
+
+  <div class="troubleshoot-body px-4 pb-4 pt-1 text-[0.95rem] leading-relaxed text-[var(--color-text-muted)]">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .troubleshoot > summary { list-style: none; }
+  .troubleshoot > summary::-webkit-details-marker { display: none; }
+
+  .chevron { transition: transform 0.15s ease; }
+  .troubleshoot[open] > summary .chevron { transform: rotate(90deg); }
+
+  .troubleshoot-body :global(p:first-child) { margin-top: 0; }
+  .troubleshoot-body :global(p:last-child) { margin-bottom: 0; }
+
+  /* Название ошибки жирным — отбиваем от объяснения */
+  .troubleshoot-body :global(strong) { color: var(--color-text); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chevron { transition: none; }
+  }
+</style>

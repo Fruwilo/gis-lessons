@@ -22,6 +22,7 @@ const lessons = defineCollection({
     topics: z.array(z.string()).default([]),    // темы для фильтра на главной: ["ДЗЗ", ...]
     order: z.number().optional(),           // порядок в списке (1, 2, 3...)
     cover: z.string().optional(),           // путь к превью-картинке
+    qgis: z.string().optional(),            // версия QGIS: "3.40 LTR"
     publishedAt: z.coerce.date().optional(),
     draft: z.boolean().default(false),      // черновики не публикуются
   }),
