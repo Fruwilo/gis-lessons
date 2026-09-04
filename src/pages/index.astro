@@ -26,6 +26,7 @@ const cards = rawLessons.map(lesson => ({
   duration: lesson.data.duration,
   tools: lesson.data.tools,
   difficulty: lesson.data.difficulty,
+  qgis: lesson.data.qgis,
   topics: lesson.data.topics,
 }));
 
@@ -103,6 +104,12 @@ const allDifficulties = [...new Set(cards.map(c => c.difficulty).filter(Boolean)
                 <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">
                   {card.difficulty}
                 </span>
+              )}
+              {card.qgis && (
+                <span
+                  class="px-2 py-1 rounded-full font-mono"
+                  style="background-color: var(--color-warning-muted); color: var(--color-warning);"
+                >QGIS {card.qgis}</span>
               )}
             </div>
 

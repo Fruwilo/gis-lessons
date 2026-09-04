@@ -14,6 +14,10 @@ import Callout from '../../components/Callout.astro';
 import Formula from '../../components/Formula.astro';
 import Figure from '../../components/Figure.astro';
 import VideoEmbed from '../../components/VideoEmbed.astro';
+import Checkpoint from '../../components/Checkpoint.astro';
+import Rescue from '../../components/Rescue.astro';
+import Troubleshoot from '../../components/Troubleshoot.astro';
+import Submit from '../../components/Submit.astro';
 
 export async function getStaticPaths() {
   const lessons = await getCollection('lessons', ({ data }) => !data.draft);
@@ -39,7 +43,8 @@ const tocHeadings = headings.map((h, i) => ({ ...h, text: tocLabels[i] ?? h.text
   duration={lesson.data.duration}
   tools={lesson.data.tools}
   difficulty={lesson.data.difficulty}
+  qgis={lesson.data.qgis}
   headings={tocHeadings}
 >
-  <Content components={{ Callout, Formula, Figure, VideoEmbed }} />
+  <Content components={{ Callout, Formula, Figure, VideoEmbed, Checkpoint, Rescue, Troubleshoot, Submit }} />
 </LessonLayout>

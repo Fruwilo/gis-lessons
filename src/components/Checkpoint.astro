@@ -1,0 +1,85 @@
+---
+// ====================================================
+// Checkpoint.astro — контрольная точка «сверьтесь»
+//
+// Ставится в конце каждой части урока. Студент сверяет свой экран
+// с эталоном и идёт дальше, не поднимая руку.
+//
+// Использование в .mdx:
+//   <Checkpoint title="Конец части 1">
+//   - Проект сохранён как `Фамилия.qgz`
+//   - В правом нижнем углу написано `EPSG:32636`
+//
+//   <Figure src="images/.../checkpoint-1.png" alt="Как должно выглядеть" />
+//   </Checkpoint>
+//
+// Пункты списка получают галочки вместо маркеров.
+// Блок намеренно отличается от <Callout>: рамка со всех сторон,
+// чтобы контрольную точку было видно при пролистывании.
+// ====================================================
+
+interface Props {
+  /** Что именно сверяем: «Конец части 1», «После шага 7»… */
+  title?: string;
+}
+
+const { title } = Astro.props;
+---
+
+<section class="checkpoint my-6 rounded-lg border-2 border-[var(--color-success)] bg-[var(--color-surface)] overflow-hidden">
+  <header
+    class="flex items-center gap-2 px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-wider"
+    style="background-color: var(--color-success-muted); color: var(--color-success);"
+  >
+    <svg
+      width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+    <span>Сверьтесь{title ? ` — ${title}` : ''}</span>
+  </header>
+
+  <div class="checkpoint-body px-4 py-3 text-[0.95rem] leading-relaxed">
+    <slot />
+  </div>
+</section>
+
+<style>
+  /* Содержимое приходит из MDX уже свёрстанным, поэтому :global */
+  .checkpoint-body :global(ul) {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .checkpoint-body :global(ul > li) {
+    position: relative;
+    padding-left: 1.6rem;
+  }
+
+  /* Галочка вместо маркера */
+  .checkpoint-body :global(ul > li)::before {
+    content: '';
+    position: absolute;
+    left: 0.15rem;
+    top: 0.45em;
+    width: 0.55rem;
+    height: 0.3rem;
+    border-left: 2px solid var(--color-success);
+    border-bottom: 2px solid var(--color-success);
+    transform: rotate(-45deg);
+  }
+
+  .checkpoint-body :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .checkpoint-body :global(p:last-child),
+  .checkpoint-body :global(figure:last-child) {
+    margin-bottom: 0;
+  }
+</style>
