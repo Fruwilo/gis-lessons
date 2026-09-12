@@ -1,0 +1,738 @@
+---
+title: "Premier projet dans QGIS"
+description: "On installe le logiciel, on range ses fichiers, on branche un fond de carte et on ajoute la limite de son territoire. Le projet créé aujourd'hui vous suivra tout le semestre."
+duration: "~1 heure"
+tools: ["QGIS", "QuickMapServices"]
+# difficulty и topics — канонические ключи (одинаковые во всех языках):
+# difficulty переводится при выводе, topics используются фильтром на главной
+difficulty: "новичок"
+topics: ["основы", "интерфейс"]
+qgis: "3.40 et plus récent"
+order: 1
+cover: "images/qgis-first-project/cover.png"
+lang: "fr"
+translationOf: "qgis-first-project"
+---
+
+<Callout type="info" title="Ce qu'il vous faut">
+
+**Le logiciel :** QGIS **3.40 ou plus récent**. Sur une version plus ancienne
+la leçon reste faisable — simplement, certaines entrées de menu portent
+un autre nom et il faudra deviner.
+
+**Les données :** <a href="https://disk.yandex.ru/d/4QNCFGltnH43yg" target="_blank" rel="noopener noreferrer">télécharger l'archive `tver.zip`</a> — 1,4 Mo.
+
+**Votre territoire :** vous l'avez tiré au sort en cours. Notez-le tout de
+suite, il servira plus loin dans le nom du fichier.
+
+</Callout>
+
+<Callout type="tip" title="Les noms de menus dans cette leçon">
+
+Tous les chemins de menus sont donnés **pour QGIS en français**. Si votre
+QGIS s'ouvre en anglais ou en russe : **Préférences → Options… → Général →
+Paramètres régionaux**, cochez « Forcer les paramètres régionaux », choisissez
+le français et redémarrez le logiciel.
+
+Les **noms des couches et des champs** (`boundary_mo`, `name_short`…) et les
+**valeurs dans la table** (`Торжокский`…) viennent des données elles-mêmes :
+ils restent en russe et ne se traduisent pas.
+
+</Callout>
+
+## Aide-mémoire : de quoi se compose la fenêtre de QGIS
+
+À la première ouverture, il y a beaucoup de choses à l'écran. Pas besoin de
+tout comprendre d'un coup : pour cette première séance, quatre endroits
+suffisent.
+
+| Zone | Où elle se trouve | À quoi elle sert |
+| --- | --- | --- |
+| **Explorateur** | en haut à gauche | Le système de fichiers directement dans QGIS : disques, dossiers, bases de données. On y voit le contenu du dossier du projet, et c'est de là qu'on fait glisser les données sur la carte |
+| **Couches** | en bas à gauche | La liste de tout ce qui est actuellement sur la carte. L'ordre de haut en bas = l'ordre d'affichage : la couche du haut cache celles du dessous |
+| **Carte** | au centre | L'image elle-même |
+| **Code du système de coordonnées** | en bas à droite, tout au coin | Indique dans quel système de coordonnées se trouve le projet. Juste après l'installation ce sera `EPSG:4326` — on le changera à l'étape suivante |
+
+
+<Figure src="images/qgis-first-project/01-interface.png"
+        alt="Fenêtre de QGIS avec les zones annotées"
+        caption="Les quatre endroits qui suffisent pour la première séance" />
+
+<Callout type="tip" title="Un mot à retenir tout de suite">
+
+Une **couche**, c'est un ensemble d'objets de même nature : toutes les routes,
+toutes les localités, toutes les limites. Une carte s'assemble en couches,
+comme un mille-feuille. Tout ce que vous ferez pendant le semestre consiste
+à ajouter, modifier et empiler des couches.
+
+</Callout>
+
+---
+
+## Partie 1. Installer le logiciel et ranger ses fichiers (~25 min) || Partie 1. Installation et rangement
+
+### Étape 1 — Installez QGIS
+
+Ouvrez <a href="https://qgis.org/download/" target="_blank" rel="noopener noreferrer">qgis.org/download</a>
+et téléchargez la version pour Windows.
+
+La page propose deux variantes. Prenez celle marquée **« Long Term Release »**
+ou **LTR** : c'est la branche stable, maintenue un an, dans laquelle on ne
+déplace pas les boutons au milieu du semestre. « Latest release » est plus
+récente, mais elle change plus souvent.
+
+N'importe quelle version **3.40 ou plus récente** convient. Si vous avez déjà
+quelque chose de plus ancien, pas besoin de réinstaller : la leçon passe
+quand même.
+
+L'installation est classique : « Suivant — Suivant — Terminer ». Environ 2 Go
+d'espace disque.
+
+
+<Figure src="images/qgis-first-project/02-download.png"
+        alt="Page de téléchargement de QGIS" caption="On prend la LTR" />
+
+<Callout type="warning" title="Si vous installez sur votre propre portable">
+
+N'installez pas QGIS dans un dossier dont le chemin contient des accents,
+des caractères non latins ou des espaces (par exemple `C:\Users\Aurélie\Programmes`).
+Certains modules cassent sur ce genre de chemin, et vous y perdrez une
+demi-séance à comprendre pourquoi. Gardez le chemin par défaut.
+
+</Callout>
+
+Après l'installation, plusieurs raccourcis apparaissent dans le menu
+« Démarrer ». Il vous faut **QGIS Desktop** — sans la mention « with GRASS ».
+
+### Étape 2 — Créez le dossier du projet
+
+C'est une étape ennuyeuse qui vous fera gagner tout le semestre.
+Faites-la honnêtement.
+
+Créez un dossier, et à l'intérieur deux sous-dossiers :
+
+```text
+Nom_Territoire\
+├── Nom_Territoire.qgz   ← le fichier de projet, à la racine. On le créera à l'étape 3
+├── data\                ← on y met toutes les données téléchargées
+└── output\              ← on y exporte les cartes terminées
+```
+
+À la place de `Nom_Territoire` : votre nom de famille et le territoire tiré
+au sort, par exemple `Dupont_Torjokski`.
+
+**Le fichier de projet reste à la racine du dossier**, pas dans un
+sous-dossier. L'étape 4 en expliquera la raison : QGIS affiche dans
+l'Explorateur le contenu du dossier où se trouve le `.qgz`. S'il est à la
+racine, on voit `data`, `output` et tout ce que vous y ajouterez ensuite.
+S'il est dans un sous-dossier, on ne voit que ce sous-dossier.
+
+<Callout type="attention" title="Pourquoi on ne travaille pas « depuis le bureau »">
+
+Un fichier de projet QGIS **ne contient pas les données**. Il ne contient que
+des liens : « la couche des limites se trouve à tel chemin ». Si vous déplacez
+ou renommez ensuite le dossier des données, le projet s'ouvrira — mais vide,
+avec des croix rouges à la place des couches.
+
+Une structure de dossiers mise en place une fois, et le problème ne se
+posera plus jusqu'à la fin du semestre.
+
+</Callout>
+
+<Figure src="images/qgis-first-project/02_1-folder.png"
+        alt="Les dossiers créés" caption="Voilà à quoi cela doit ressembler" />
+
+
+### Étape 3 — Créez le projet et définissez le système de coordonnées
+
+Lancez QGIS. La page d'accueil s'ouvre avec la liste des projets récents —
+pour l'instant elle est vide.
+
+1. **Projet → Nouveau** (ou `Ctrl+N`).
+2. **Projet → Enregistrer sous…** — enregistrez **à la racine** du dossier
+   `Nom_Territoire` sous le nom `Nom_Territoire.qgz`.
+
+Passons au système de coordonnées. On ne le change pas par le menu, mais
+directement depuis la fenêtre de carte :
+
+3. En bas à droite, cliquez sur le **code du système de coordonnées** — pour
+   l'instant il y est écrit `EPSG:4326`. La fenêtre « Propriétés du projet »
+   s'ouvre directement sur le bon onglet.
+4. Dans le champ **« Filtre »**, saisissez `32636` — on peut entrer le code
+   entier ou chercher par le nom.
+5. Dans la liste des **« Systèmes de coordonnées de référence prédéfinis »**
+   se déroule `Projeté → Universal Transverse Mercator (UTM)`. Choisissez
+   **WGS 84 / UTM zone 36N** — la colonne de droite affichera `EPSG:32636`.
+6. **Appliquer**, puis **OK**.
+
+Vérifiez : en bas à droite figure maintenant `EPSG:32636`.
+
+La même fenêtre s'ouvre par **Projet → Propriétés… → SCR** — utile si vous
+masquez accidentellement le bouton du coin.
+
+<Figure src="images/qgis-first-project/03-crs.png"
+        alt="Fenêtre de choix du système de coordonnées du projet"
+        caption="Le chemin complet : le code dans le coin → filtre → choix dans la liste → OK" />
+
+<Callout type="tip" title="Ce que nous venons de faire">
+
+Un système de coordonnées, c'est une façon de transformer la position d'un
+point sur une Terre ronde en un couple de nombres sur une carte plane. Il en
+existe beaucoup, et ils donnent des nombres différents.
+
+`EPSG:32636`, c'est l'UTM, zone 36N. Elle convient à l'oblast de Tver et,
+contrairement à beaucoup d'autres, elle **mesure honnêtement les distances
+et les surfaces, en mètres**.
+
+Regardez la petite carte en bas à droite de la fenêtre de sélection : la zone
+pour laquelle ce système fonctionne sans déformation notable y est surlignée.
+Pour la zone 36N, c'est une bande verticale qui passe justement par l'oblast
+de Tver. Avec la zone voisine, les surfaces partiraient de travers.
+
+On verra cela en détail à la séance 3 ; pour l'instant, contentez-vous de
+le régler.
+
+</Callout>
+
+### Étape 4 — Montrez votre dossier à QGIS
+
+L'Explorateur, c'est le gestionnaire de fichiers intégré à QGIS. Vous le
+réglez une fois, et tout le semestre vous ouvrirez vos données depuis là
+plutôt que de les chercher sur le disque.
+
+1. Le panneau **Explorateur** se trouve en haut à gauche, au-dessus de
+   « Couches ». S'il n'est pas visible : **Vue → Panneaux → Explorateur**.
+2. Trouvez dans la liste **« Dossier du projet »** et dépliez-le.
+
+À l'intérieur : `data` et `output`, ceux que vous avez créés à l'étape 2.
+
+« Dossier du projet », c'est le dossier où se trouve votre `.qgz`. Il est
+apparu tout seul dans la liste dès que vous avez enregistré le projet. C'est
+pour cela que nous avons mis le fichier de projet à la racine : une seule
+ligne dépliée, et vous voyez d'un coup toutes vos données et tous vos
+résultats.
+
+3. Au passage : clic droit sur le dossier → **« Ajouter aux favoris »**.
+   Il sera alors en tête de liste, même dans le projet de quelqu'un d'autre.
+
+<Callout type="tip" title="Pourquoi c'est utile dès maintenant">
+
+En enregistrant le projet, vous verrez le contenu de votre dossier de travail
+non pas « quelque part dans l'explorateur Windows », mais juste à côté de la
+carte. On voit tout de suite si le fichier est bien arrivé là où on le
+croyait, et si rien d'autre ne s'est glissé à côté.
+
+Et une fois arrivés aux données, une couche pourra simplement être glissée
+de l'Explorateur vers la carte, sans aucune boîte de dialogue.
+
+</Callout>
+
+
+<Checkpoint title="fin de la partie 1">
+
+- Sur le disque se trouve un dossier `Nom_Territoire` avec les sous-dossiers `data` et `output`
+- À la racine de ce dossier se trouve le fichier `Nom_Territoire.qgz`
+- En bas à droite de QGIS est écrit `EPSG:32636`
+- Dans le panneau **Explorateur**, « Dossier du projet » se déplie et contient `data` et `output`
+
+{/* CAPTURE 4 — référence : projet vide, EPSG:32636 en bas à droite,
+    dossier du projet déplié dans l'Explorateur. */}
+<Figure src="images/qgis-first-project/04-folder_project.png"
+        alt="Panneau Explorateur avec le dossier du projet déplié"
+        caption="Le panneau de gauche : trouvez le dossier voulu et dépliez-le — par la flèche sur le côté ou par un double-clic sur le dossier" />
+
+</Checkpoint>
+
+
+<Rescue href="https://disk.yandex.ru/d/rJneDzihYpBoWg" step="après la partie 1">
+À l'intérieur : un projet avec le bon système de coordonnées. Placez-le à la
+racine de votre dossier et continuez avec la partie 2.
+</Rescue>
+
+---
+
+## Partie 2. Le fond de carte : regarder son territoire (~15 min) || Partie 2. Fond de carte
+
+Le fond de carte, c'est l'arrière-plan : une image satellite ou une carte
+classique. En soi ce ne sont pas des données, on ne peut pas travailler
+dessus. Mais sans lui vous ne savez pas où vous regardez, et c'est très
+gênant au début.
+
+### Étape 5 — Installez l'extension QuickMapServices
+
+1. **Extensions → Installer/Gérer les extensions…**
+2. À gauche, choisissez **Toutes**.
+3. Dans la recherche, tapez `QuickMapServices`.
+4. Sélectionnez l'extension dans la liste et cliquez sur **Installer
+   l'extension**.
+5. Fermez la fenêtre.
+
+Une nouvelle entrée apparaît dans le menu du haut : **Internet**.
+
+
+<Figure src="images/qgis-first-project/05-plugin.png"
+        alt="Gestionnaire d'extensions de QGIS avec QuickMapServices trouvé"
+        caption="Section « Toutes », recherche par le nom, bouton « Installer l'extension »" />
+
+### Étape 6 — Regardez quels fonds de carte sont disponibles
+
+Il n'y a rien à télécharger : après l'installation, **tous les jeux de fonds
+de carte sont déjà activés**. Mais cela vaut la peine de jeter un œil aux
+réglages — c'est là que vous enlèverez plus tard ce qui est superflu.
+
+1. Cliquez sur le bouton **QuickMapServices** dans la barre d'outils et
+   choisissez **Paramètres**. La même fenêtre s'ouvre par
+   **Préférences → Options… → NextGIS → QuickMapServices**.
+2. Onglet **« Visibilité »**. On y trouve la liste des groupes : OpenStreetMap,
+   Google, Bing, ESRI, Yandex, USGS, Waze et d'autres. Une case cochée signifie
+   que le groupe apparaît dans le menu de l'extension.
+3. Décochez ceux dont vous ne vous servirez sûrement pas — par exemple
+   BasemapAT (c'est l'Autriche), AutoNavi (la Chine), Waze. Le menu sera plus
+   court, et vous trouverez plus vite ce qu'il vous faut.
+4. **OK**.
+
+<Figure src="images/qgis-first-project/06-qms-visibility.png"
+        alt="Onglet « Visibilité » dans les paramètres de QuickMapServices"
+        caption="Case cochée = le groupe de fonds de carte est visible dans le menu de l'extension" />
+
+<Callout type="tip" title="Si vous tombez sur un autre tutoriel en ligne">
+
+Dans les anciennes versions de QuickMapServices, il n'y avait après
+l'installation qu'une paire de fonds de carte, et on téléchargeait les autres
+avec le bouton **Get contributed pack** de l'onglet **More services**. Si vous
+tombez sur une description de ce genre, elle concerne l'ancienne version :
+chez vous, cette étape n'est plus nécessaire.
+
+</Callout>
+
+### Étape 7 — Ajoutez un fond de carte
+
+Le menu de l'extension ne contient qu'une partie des fonds de carte. Tout le
+reste passe par la recherche, et il y en a là plusieurs fois plus.
+
+1. Ouvrez le panneau **« Rechercher dans NextGIS QMS »** : bouton **QMS**
+   dans la barre d'outils. Le panneau apparaît à droite. Le même bouton
+   le referme.
+2. Dans le champ de recherche, tapez `Yandex`.
+3. Dans la liste, trouvez **Yandex Satellite 26** et cliquez sur le **+**
+   à droite du nom.
+
+La couche apparaît dans le panneau « Couches », et l'image satellite sur la
+carte. La case à gauche permet de l'afficher ou de la masquer.
+
+<Figure src="images/qgis-first-project/06_1-Yandex_map.png"
+        alt="Recherche d'un fond de carte dans le panneau NextGIS QMS et ajout de la couche"
+        caption="La recherche à droite, le « + » ajoute la couche. Supprimez de la liste des couches les fonds de carte en trop" />
+
+<Callout type="tip" title="Pourquoi celui-là">
+
+`Yandex Satellite 26`, ce sont des images de la Russie avec des inclusions
+d'orthophotographies haute résolution. Une orthophotographie est une image
+redressée de telle façon qu'on peut mesurer dessus. Plus détaillé et plus
+récent que la plupart des autres fonds de carte ; sur nos territoires, la
+différence se voit immédiatement.
+
+</Callout>
+
+<Callout type="warning" title="Si le fond de carte ne charge pas">
+
+Sur le réseau de l'université, une partie des sources est bloquée — ce n'est
+pas votre faute. Essayez-les l'une après l'autre, toujours via la recherche
+QMS :
+
+1. **Yandex Satellite 26** — l'option principale.
+2. **Google Satellite** — si Yandex reste muet.
+3. **Esri World Imagery** — la solution de secours. C'est la plus stable de
+   toutes, même si les images sont parfois plus anciennes.
+
+Si vous en avez ajouté plusieurs, gardez celle qui fonctionne et supprimez
+les autres depuis le panneau « Couches » : clic droit → « Supprimer la
+couche ». Sinon QGIS les chargera toutes et ramera.
+
+</Callout>
+
+<Callout type="attention" title="Vérifiez le code en bas à droite">
+
+Les fonds de carte ont leur propre système de coordonnées, et QGIS peut
+l'imposer au projet à la place du vôtre. Si après l'ajout de la couche le
+coin affiche par exemple `EPSG:3395` au lieu de `EPSG:32636`, remettez
+`32636` de la même façon qu'à l'étape 3 : clic sur le code, filtre, choix, OK.
+
+Le fond de carte ne disparaîtra pas pour autant : QGIS le reprojette à la
+volée.
+
+</Callout>
+
+
+### Étape 8 — Apprenez à vous déplacer sur la carte
+
+Cinq gestes que vous ferez mille fois au cours du semestre :
+
+| Action | Comment |
+| --- | --- |
+| Zoomer / dézoomer | molette de la souris |
+| Déplacer la carte | maintenir la molette enfoncée et tirer |
+| Zoomer sur une couche | clic droit sur la couche → **Zoomer sur la couche** |
+| Tout afficher | **Vue → Zoom complet** (`Ctrl+Shift+F`) |
+| Revenir à la vue précédente | **Vue → Zoom → Zoom précédent** |
+
+Trouvez l'oblast de Tver sur l'image et approchez-vous.
+
+<Troubleshoot>
+
+**L'entrée « Internet » n'apparaît pas dans le menu.** L'extension ne s'est
+pas installée. Revenez à l'étape 5 et vérifiez que QuickMapServices est bien
+coché dans la liste des extensions.
+
+**Le fond de carte ne charge pas, la carte est grise.** Le plus souvent :
+la connexion, ou une source bloquée sur le réseau de l'université. Essayez
+dans l'ordre : Google Satellite, puis Esri World Imagery, qui est la plus
+stable.
+
+**Le panneau de recherche QMS n'apparaît pas à droite.** Cliquez de nouveau
+sur le bouton **QMS** de la barre d'outils : il ouvre et ferme le panneau.
+
+**La recherche ne trouve rien.** Vérifiez que vous avez bien tapé `Yandex`
+en alphabet latin. La recherche interroge un catalogue en ligne : sans
+connexion, la liste restera vide.
+
+**Le fond de carte est là, mais tout est flou par carrés.** Il est encore en
+train de charger — patientez quelques secondes sans toucher à la molette.
+
+</Troubleshoot>
+
+<Checkpoint title="fin de la partie 2">
+
+- Le panneau « Couches » contient une couche de fond de carte
+- L'image satellite est visible sur la carte
+- En bas à droite figure toujours `EPSG:32636`
+- Vous avez trouvé l'oblast de Tver et vous vous en êtes approché
+
+<Figure src="images/qgis-first-project/07_result_step2.png"
+        alt="Fenêtre de QGIS : image satellite de l'oblast de Tver en plein écran"
+        caption="Voilà à quoi ressemble la fin de la partie 2 : le fond de carte sur toute la carte, la couche dans le panneau « Couches », EPSG:32636 dans le coin" />
+
+</Checkpoint>
+
+
+<Rescue href="https://disk.yandex.ru/d/4dnJKahG3ha1xA" step="après la partie 2">
+À l'intérieur : un projet avec le fond de carte. Ouvrez-le et continuez avec
+la partie 3.
+</Rescue>
+
+
+---
+
+## Partie 3. Première couche vectorielle (~25 min) || Partie 3. Couche vectorielle
+
+On ajoute maintenant de vraies données : la limite de votre territoire.
+
+### Étape 9 — Décompressez l'archive de données
+
+Téléchargez l'archive `tver.zip` par le lien en début de leçon et
+décompressez-la dans le sous-dossier `data` de votre projet.
+
+À l'intérieur : un seul fichier, `tver.gpkg`. C'est un **GeoPackage** : un
+fichier unique contenant d'un coup plusieurs couches — limites, localités,
+routes, rivières. Un format moderne et pratique, que nous utiliserons
+principalement pour la suite du cours.
+
+<Callout type="attention" title="Aide-mémoire : 7-Zip en deux minutes">
+
+Un logiciel d'archivage vous servira aujourd'hui, et encore en fin de séance
+au moment de rendre le travail. Prenez le temps de comprendre une fois.
+
+**Sous Windows 11, le menu 7-Zip est caché.** Le clic droit ouvre d'abord un
+menu court — cliquez-y sur **« Afficher plus d'options »** (ou faites
+directement `Maj + F10` au lieu du clic droit). L'entrée **7-Zip** s'y trouve.
+
+**Décompresser.** Clic droit sur l'archive → **7-Zip** → **« Extraire ici »**.
+Les fichiers se posent à côté de l'archive, dans le même dossier.
+
+Il y a aussi **« Extraire vers "tver\" »**, qui crée un dossier portant le nom
+de l'archive et met tout dedans. Prenez celle-là quand vous ne savez pas
+combien de fichiers il y a à l'intérieur : ils ne s'éparpilleront pas dans
+tout le dossier.
+
+**Compresser.** Sélectionnez les fichiers voulus (plusieurs avec `Ctrl`
+enfoncé) → clic droit → **7-Zip** → **« Ajouter à l'archive… »**. Dans la
+fenêtre, choisissez le **format `zip`** et donnez un nom. Ou plus vite, sans
+fenêtre : **« Ajouter à "nom.zip" »** — le nom de l'archive est repris du
+fichier ou du dossier.
+
+**Le format.** Donnez aux autres du `zip` : il s'ouvre sur n'importe quel
+ordinateur sans 7-Zip. Le format `7z` compresse mieux, mais le destinataire
+doit avoir le logiciel.
+
+</Callout>
+
+<Callout type="warning" title="Décompressez vraiment">
+
+N'ouvrez pas l'archive d'un double-clic et ne faites pas glisser le fichier
+directement depuis la fenêtre de l'archiveur. Windows en affichera le contenu,
+mais physiquement le fichier restera dans l'archive — QGIS ne le trouvera pas,
+ou le perdra au lancement suivant.
+
+Pour la même raison, ne travaillez pas depuis « Téléchargements » : le fichier
+doit se trouver dans votre dossier `data`.
+
+</Callout>
+
+### Étape 10 — Ajoutez la limite de votre entité municipale
+
+1. **Couche → Ajouter une couche → Ajouter une couche vecteur…**
+   (`Ctrl+Shift+V`).
+2. Dans le champ « Jeu de données », cliquez sur **…** et choisissez
+   `data\tver.gpkg`.
+3. Cliquez sur **Ajouter**.
+4. La liste des couches contenues dans le paquet s'ouvre. Choisissez
+   **`boundary_mo`** — ce sont les limites des entités municipales — et
+   cliquez sur **OK**.
+5. Fermez la fenêtre d'ajout.
+
+Une nouvelle couche est apparue dans le panneau des couches, avec toutes les
+entités municipales de l'oblast. Pour l'instant toutes à la fois : on ne
+distingue pas la vôtre.
+
+<Callout type="tip" title="Le chemin court">
+
+La même chose se fait plus vite par l'**Explorateur**, que vous avez déplié
+à l'étape 4 : `Dossier du projet → data → tver.gpkg`, puis double-clic sur
+la couche voulue. Ou faites-la glisser directement sur la carte.
+
+Utilisez cette méthode pour la suite du cours — la boîte de dialogue des
+points 1 à 5 sert quand les données sont loin ou dans un format inhabituel.
+
+</Callout>
+
+
+<Figure src="images/qgis-first-project/08-add-layer.png"
+        alt="Fenêtre « Sources de données » et liste des couches contenues dans le GeoPackage"
+        caption="Le bouton « … » sert à choisir le fichier tver.gpkg. Dans la liste, on sélectionne la seule couche boundary_mo et on clique sur « Ajouter les couches »" />
+
+### Étape 11 — Jetez un œil à la table d'attributs
+
+Chaque objet sur la carte a non seulement une forme, mais aussi des
+**attributs** — une ligne dans une table. C'est la moitié du travail en SIG,
+et vous allez la voir pour la première fois.
+
+Clic droit sur la couche → **Ouvrir la table d'attributs** (`F6`).
+
+Dans le panneau « Couches », elle s'appelle `tver — boundary_mo` : d'abord le
+nom du fichier, puis le nom de la couche à l'intérieur. C'est ainsi que QGIS
+nomme tout ce qui provient d'un GeoPackage.
+
+Une table ordinaire s'ouvre : une ligne = un objet sur la carte. Elle a cinq
+colonnes :
+
+| Champ | Ce qu'il contient |
+| --- | --- |
+| `name` | Le nom complet : « Торжокский муниципальный округ » |
+| `name_short` | Le nom court : « Торжокский » — plus pratique à manipuler |
+| `type_mo` | District municipal, district urbain ou ZATO (commune fermée) |
+| `oktmo` | Le code OKTMO — il servira à la séance 4, quand nous rattacherons des statistiques |
+| `fias_id` | L'identifiant dans le registre des adresses |
+
+Cliquez sur l'en-tête `name_short` : la table se trie. Trouvez votre
+territoire.
+
+Cliquez sur le numéro de ligne à gauche : la ligne se surligne en jaune,
+**et en même temps le polygone correspondant s'allume sur la carte**.
+C'est là l'idée centrale des SIG : la table et la carte sont les deux faces
+des mêmes données.
+
+Fermez la table.
+
+<Figure src="images/qgis-first-project/09-select_object.png"
+        alt="Table d'attributs avec une ligne sélectionnée et le polygone correspondant surligné sur la carte"
+        caption="Un clic sur le numéro de ligne à gauche, et le district voulu s'allume en jaune directement sur la carte" />
+
+
+### Étape 12 — Ne gardez que votre territoire
+
+1. Clic droit sur la couche → **Filtrer…**
+2. En bas de la fenêtre, dans le champ de requête, écrivez (en remplaçant par
+   votre nom) :
+
+```sql
+"name_short" = 'Торжокский'
+```
+
+Écrivez le nom **exactement comme il figure dans la colonne `name_short`** —
+et exactement comme sur votre carte de tirage au sort. Les noms sont en russe
+dans les données : le plus simple est de les copier depuis la table
+d'attributs.
+
+3. Cliquez sur **Tester** — QGIS annonce combien d'objets correspondent.
+   Il doit y en avoir **un**.
+4. **OK**.
+
+Il ne reste qu'un polygone sur la carte. Clic droit sur la couche →
+**Zoomer sur la couche**.
+
+<Callout type="tip" title="Ce qu'est un filtre">
+
+Un filtre **ne supprime pas** les données : il les masque temporairement.
+Tous les autres districts sont toujours là, vous avez simplement demandé à
+ne pas les afficher. On retire le filtre par la même fenêtre, en effaçant la
+condition.
+
+Les noms de champs et les valeurs n'ont pas les mêmes guillemets :
+`"champ"` en guillemets doubles, `'valeur'` en guillemets simples.
+Si vous les intervertissez, QGIS renvoie une erreur.
+
+</Callout>
+
+### Étape 13 — Réglez la symbologie
+
+Un remplissage plein cache l'image satellite. Rendons la limite visible et
+l'intérieur transparent.
+
+1. Double-clic sur la couche → les **Propriétés de la couche** s'ouvrent.
+2. Onglet **Symbologie**.
+3. En haut, choisissez le type **Remplissage simple**.
+4. **Style de remplissage** → **Pas de brosse** (c'est-à-dire sans
+   remplissage).
+5. **Couleur de trait** → une couleur vive, par exemple rouge ou jaune.
+6. **Largeur de trait** → `0,86` mm. Pas besoin de taper la valeur : placez
+   la souris sur le champ et tournez la molette.
+7. **Appliquer** → **OK**.
+
+La limite de votre territoire est maintenant visible sur l'image.
+
+<Figure src="images/qgis-first-project/10-style_layer.png"
+        alt="Onglet « Symbologie » des propriétés de la couche avec les réglages du remplissage simple"
+        caption="« Pas de brosse » + trait rouge de 0,86 mm : l'intérieur est transparent, l'image reste visible sous la limite" />
+
+### Étape 14 — Étiquetez le territoire
+
+1. Propriétés de la couche → onglet **Étiquettes**.
+2. En haut, dans la liste déroulante, choisissez **Étiquettes simples**.
+3. **Valeur** → choisissez le champ **`name_short`**.
+4. À gauche, dans la liste des onglets, choisissez **Tampon** → cochez
+   **« Dessiner un tampon de texte »**, taille `1` mm, couleur blanche.
+5. **OK**.
+
+Le tampon, c'est le contour blanc autour des lettres. Sans lui, une étiquette
+est illisible sur une image satellite.
+
+<Figure src="images/qgis-first-project/11-label_layer.png"
+        alt="Onglet « Étiquettes » des propriétés de la couche, sous-onglet « Tampon »"
+        caption="Mode « Étiquettes simples », valeur name_short. Le tampon s'active par la case « Dessiner un tampon de texte »" />
+
+### Étape 15 — Enregistrez le projet et faites une capture
+
+1. **Projet → Enregistrer** (`Ctrl+S`).
+2. Cadrez la vue de façon que tout le territoire tienne dans la fenêtre.
+3. **Projet → Importer/Exporter → Exporter la carte au format image…**
+4. Laissez la résolution par défaut et enregistrez dans le sous-dossier
+   `output` sous le nom `Nom_screen.png`.
+
+<Checkpoint title="fin de la partie 3">
+
+- Le panneau « Couches » contient deux couches : `tver — boundary_mo` et le fond de carte
+- La carte ne montre qu'**un seul** territoire : le vôtre
+- La limite est dessinée en contour, l'image reste visible dessous
+- Le territoire porte une étiquette avec un contour blanc
+- Le dossier `output` contient `Nom_screen.png`
+- Le projet est enregistré (pas d'astérisque dans le titre de la fenêtre)
+
+<Figure src="images/qgis-first-project/12-result_step_3.png"
+        alt="Limite du district en contour rouge sur l'image satellite, avec son étiquette"
+        caption="Voilà le but : un contour sans remplissage, une étiquette avec tampon, l'image satellite en dessous" />
+
+</Checkpoint>
+
+<Rescue href="https://disk.yandex.ru/d/ixSwrY1Yj9eeug" step="après la partie 3">
+À l'intérieur : un projet avec la couche des limites. Ouvrez-le et continuez
+avec les bonus.
+</Rescue>
+
+---
+
+## Bonus 1. Ajoutez les autres couches
+
+`tver.gpkg` contient encore sept couches. Ajoutez-les de la même façon
+(étape 10) et regardez à quoi ressemble votre territoire avec elles :
+
+| Couche | Ce que c'est |
+| --- | --- |
+| `towns` | Villes et agglomérations de type urbain |
+| `rural_settlements` | Localités rurales — 9 500 au total, avec la population de 1989 et de 2010 |
+| `main_roads` | Routes principales |
+| `railroads` | Voies ferrées |
+| `rivers` | Rivières |
+| `lakes` | Lacs et réservoirs |
+| `boundary_region` | La limite de l'oblast entier |
+
+Faites attention à l'**ordre des couches** dans le panneau : si les limites
+se retrouvent au-dessus des localités, les points disparaîtront sous le
+remplissage. Les couches se déplacent à la souris.
+
+## Bonus 2. Créez un signet
+
+Retrouver son territoire à chaque fois, c'est fatigant.
+
+1. Approchez-vous de votre territoire.
+2. **Vue → Signets spatiaux → Nouveau signet spatial…**
+3. Donnez-lui le nom du territoire.
+
+Désormais, à tout moment : **Vue → Afficher le panneau des signets** →
+double-clic, et vous y êtes.
+
+## Bonus 3. Réglez l'interface à votre goût
+
+**Préférences → Options… → Général** : vous pouvez y activer le thème sombre
+et augmenter la taille de la police si l'on ne voit rien depuis le fond de
+la salle.
+
+Au même endroit, dans l'onglet **SCR**, il vaut la peine de choisir
+« Utiliser le SCR du projet » pour les nouvelles couches — moins de surprises
+par la suite.
+
+---
+
+<Submit deadline="avant la fin de la séance" where="LMS, devoir « Séance 1 »">
+
+**Ce qu'il faut envoyer :** une archive `Nom_Territoire.zip` contenant deux
+fichiers :
+
+1. `Nom_Territoire.qgz` — le fichier de projet
+2. `Nom_screen.png` — la capture de la carte
+
+Sélectionnez les deux fichiers, clic droit → 7-Zip → « Ajouter à
+l'archive… », format `zip`. La marche à suivre est dans l'aide-mémoire de
+l'étape 9.
+
+**Ce que le projet doit contenir :**
+
+- le système de coordonnées du projet `EPSG:32636`
+- la couche `boundary_mo` filtrée sur votre territoire
+- la symbologie : contour sans remplissage, étiquette avec tampon
+- un fond de carte
+
+</Submit>
+
+## Ce que nous avons appris
+
+- QGIS assemble une carte à partir de **couches** ; l'ordre dans le panneau
+  des couches = l'ordre d'affichage.
+- Un projet `.qgz` **ne contient pas les données**, seulement des liens vers
+  elles — d'où l'importance, plus grande qu'il n'y paraît, de la structure
+  des dossiers.
+- Le **système de coordonnées** se règle dans les propriétés du projet ; pour
+  l'oblast de Tver, on prend `EPSG:32636`.
+- L'**Explorateur** est le système de fichiers intégré à QGIS. On garde le
+  fichier de projet à la racine du dossier de travail : « Dossier du projet »
+  montre alors d'un coup toutes les données et tous les résultats.
+- Un **fond de carte** est un arrière-plan, pas des données. Il s'installe
+  avec l'extension QuickMapServices.
+- Chaque objet de la carte a une ligne dans la **table d'attributs** ;
+  sélectionner dans la table met l'objet en évidence sur la carte.
+- Un **filtre** masque les objets superflus sans les supprimer.
+- La symbologie d'une couche (onglet « Symbologie ») et les étiquettes se
+  règlent dans les propriétés de la couche ; sur une image satellite, on met
+  toujours un **tampon** aux étiquettes.
+
+La suite — séance 2 : nous verrons comment ces données sont faites de
+l'intérieur, et nous apprendrons à en créer nous-mêmes.
