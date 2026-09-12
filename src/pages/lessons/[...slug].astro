@@ -4,9 +4,21 @@
 // ====================================================
 // Astro вызывает getStaticPaths() при сборке, видит все .mdx в коллекции
 // и создаёт по странице на каждый. URL получается /lessons/<id-файла>/
+//
+// Переводы. У урока может быть перевод — отдельный .mdx с полями
+// lang: "fr" и translationOf: "<id основного урока>". Он получает адрес
+// основного урока с кодом языка на конце:
+//
+//   src/content/lessons/qgis-first-project.mdx     → /lessons/qgis-first-project/
+//   src/content/lessons/qgis-first-project.fr.mdx  → /lessons/qgis-first-project/fr/
+//
+// Список доступных языков считается здесь один раз и уходит в макет —
+// он рисует переключатель. У уроков без перевода список из одного языка,
+// и переключатель не появляется.
 // ====================================================
 import { getCollection, render } from 'astro:content';
 import LessonLayout from '../../layouts/LessonLayout.astro';
+import { DEFAULT_LANG, type Lang } from '../../i18n/ui';
 
 // Компоненты, доступные ВНУТРИ MDX-файлов БЕЗ импорта.
 // Авторы уроков просто пишут <Callout>, <Formula>... — и оно работает.
@@ -19,15 +31,43 @@ import Rescue from '../../components/Rescue.astro';
 import Troubleshoot from '../../components/Troubleshoot.astro';
 import Submit from '../../components/Submit.astro';
 
-export async function getStaticPaths() {
-  const lessons = await getCollection('lessons', ({ data }) => !data.draft);
-  return lessons.map(lesson => ({
-    params: { slug: lesson.id },
-    props: { lesson },
-  }));
+/** Адрес урока: основной язык — без кода, перевод — с кодом на конце */
+export function lessonPath(baseId: string, lang: Lang): string {
+  return lang === DEFAULT_LANG ? baseId : `${baseId}/${lang}`;
 }
 
-const { lesson } = Astro.props;
+export async function getStaticPaths() {
+  const lessons = await getCollection('lessons', ({ data }) => !data.draft);
+  const base = import.meta.env.BASE_URL;
+
+  // Какие языки есть у каждого урока. Ключ — id основного урока,
+  // перевод приписывается к нему через translationOf.
+  const langsOf = new Map<string, Lang[]>();
+  for (const lesson of lessons) {
+    const baseId = lesson.data.translationOf ?? lesson.id;
+    const langs = langsOf.get(baseId) ?? [];
+    langs.push(lesson.data.lang);
+    langsOf.set(baseId, langs);
+  }
+
+  return lessons.map(lesson => {
+    const baseId = lesson.data.translationOf ?? lesson.id;
+    const langs = langsOf.get(baseId) ?? [lesson.data.lang];
+
+    // Порядок кнопок в переключателе: сначала язык оригинала
+    const options = langs
+      .slice()
+      .sort((a, b) => (a === DEFAULT_LANG ? -1 : b === DEFAULT_LANG ? 1 : a.localeCompare(b)))
+      .map(lang => ({ lang, href: `${base}lessons/${lessonPath(baseId, lang)}/` }));
+
+    return {
+      params: { slug: lessonPath(baseId, lesson.data.lang) },
+      props: { lesson, options },
+    };
+  });
+}
+
+const { lesson, options } = Astro.props;
 const { Content, headings, remarkPluginFrontmatter } = await render(lesson);
 
 // Короткие названия для оглавления (из remark-toc-labels):
@@ -45,6 +85,7 @@ const tocHeadings = headings.map((h, i) => ({ ...h, text: tocLabels[i] ?? h.text
   difficulty={lesson.data.difficulty}
   qgis={lesson.data.qgis}
   headings={tocHeadings}
+  langOptions={options}
 >
   <Content components={{ Callout, Formula, Figure, VideoEmbed, Checkpoint, Rescue, Troubleshoot, Submit }} />
 </LessonLayout>

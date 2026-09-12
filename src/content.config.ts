@@ -21,6 +21,15 @@ const lessons = defineCollection({
     difficulty: z.enum(['новичок', 'средний', 'продвинутый']).optional(),
     topics: z.array(z.string()).default([]),    // темы для фильтра на главной: ["ДЗЗ", ...]
     order: z.number().optional(),           // порядок в списке (1, 2, 3...)
+
+    // --- Язык и переводы -------------------------------------------------
+    // Урок без этих полей — обычный русский урок, всё как раньше.
+    // Перевод: lang: "fr" + translationOf: "<id основного урока>".
+    // Переводы не попадают в список на главной — они показываются
+    // переключателем языка внутри самого урока.
+    lang: z.enum(['ru', 'fr']).default('ru'),
+    translationOf: z.string().optional(),
+
     cover: z.string().optional(),           // путь к превью-картинке
     qgis: z.string().optional(),            // версия QGIS: "3.40 LTR"
     publishedAt: z.coerce.date().optional(),

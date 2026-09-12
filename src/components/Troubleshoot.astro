@@ -13,6 +13,8 @@
 //   </Troubleshoot>
 // ====================================================
 
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
 interface Props {
   /** Заголовок, если нужен свой */
   title?: string;
@@ -20,7 +22,8 @@ interface Props {
   open?: boolean;
 }
 
-const { title = 'Если не получилось', open = false } = Astro.props;
+const t = useTranslations(getLangFromUrl(Astro.url));
+const { title = t('troubleshoot.title'), open = false } = Astro.props;
 ---
 
 <details class="troubleshoot my-6 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]" open={open}>

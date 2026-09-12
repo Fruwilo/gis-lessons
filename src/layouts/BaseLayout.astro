@@ -4,22 +4,28 @@
 // ====================================================
 import '../styles/global.css';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
 
 interface Props {
   title: string;
   description?: string;
 }
 
+// Язык страницы — из адреса (см. src/i18n/ui.ts). Он уходит в <html lang>,
+// чтобы браузер и поисковики знали, на каком языке страница.
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
 const {
   title,
-  description = 'Учебные материалы по ДЗЗ и QGIS',
+  description = t('site.tagline'),
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -53,13 +59,13 @@ const base = import.meta.env.BASE_URL;
 
     <footer class="border-t border-[var(--color-border)] mt-12">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6 text-sm text-[var(--color-text-muted)]">
-        Учебные материалы по ДЗЗ · {new Date().getFullYear()}
+        {t('site.footer')} · {new Date().getFullYear()}
       </div>
     </footer>
 
     <button
       id="back-to-top"
-      aria-label="Прокрутить наверх"
+      aria-label={t('nav.top')}
       class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 p-2.5 sm:p-3 rounded-full bg-[var(--color-accent)] text-white shadow-lg opacity-0 pointer-events-none transition-opacity duration-300"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

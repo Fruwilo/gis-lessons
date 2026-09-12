@@ -14,16 +14,19 @@
 // об ошибке, им не пользуются и молча отстают.
 // ====================================================
 
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
 interface Props {
   /** Прямая ссылка на файл или папку */
   href: string;
   /** На какое состояние файл: «после части 2», «после шага 7» */
   step?: string;
-  /** Подпись на кнопке */
+  /** Подпись на кнопке. По умолчанию — на языке урока */
   label?: string;
 }
 
-const { href, step, label = 'Скачать файл' } = Astro.props;
+const t = useTranslations(getLangFromUrl(Astro.url));
+const { href, step, label = t('rescue.button') } = Astro.props;
 ---
 
 <aside class="my-6 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-4">
@@ -40,7 +43,7 @@ const { href, step, label = 'Скачать файл' } = Astro.props;
 
     <div class="flex-1 min-w-0">
       <div class="font-semibold mb-1">
-        Не получилось? Возьмите готовый файл
+        {t('rescue.title')}
       </div>
 
       <div class="text-[0.9rem] text-[var(--color-text-muted)] leading-relaxed rescue-body">

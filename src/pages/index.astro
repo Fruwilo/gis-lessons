@@ -4,9 +4,21 @@
 // ====================================================
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
+import { DEFAULT_LANG, LANG_NAMES, type Lang } from '../i18n/ui';
 
-const rawLessons = await getCollection('lessons', ({ data }) => !data.draft);
+const allLessons = await getCollection('lessons', ({ data }) => !data.draft);
+
+// Переводы (lang: "fr" + translationOf) отдельными карточками не показываем:
+// на них ведёт переключатель языка внутри самого урока.
+const rawLessons = allLessons.filter(l => !l.data.translationOf);
 rawLessons.sort((a, b) => (a.data.order ?? 999) - (b.data.order ?? 999));
+
+// Какие языки есть у каждого урока — по ним рисуем плашки на карточке
+const langsOf = new Map<string, Lang[]>();
+for (const lesson of allLessons) {
+  const baseId = lesson.data.translationOf ?? lesson.id;
+  langsOf.set(baseId, [...(langsOf.get(baseId) ?? []), lesson.data.lang]);
+}
 
 const base = import.meta.env.BASE_URL;
 
@@ -18,17 +30,28 @@ function buildUrl(path) {
 }
 
 // Готовим ПЛОСКИЕ карточки — в шаблоне только {card.field}, без deep-access
-const cards = rawLessons.map(lesson => ({
-  href: base + 'lessons/' + lesson.id + '/',
-  cover: buildUrl(lesson.data.cover),
-  title: lesson.data.title,
-  description: lesson.data.description,
-  duration: lesson.data.duration,
-  tools: lesson.data.tools,
-  difficulty: lesson.data.difficulty,
-  qgis: lesson.data.qgis,
-  topics: lesson.data.topics,
-}));
+const cards = rawLessons.map(lesson => {
+  const langs = (langsOf.get(lesson.id) ?? [DEFAULT_LANG])
+    .slice()
+    .sort((a, b) => (a === DEFAULT_LANG ? -1 : b === DEFAULT_LANG ? 1 : a.localeCompare(b)));
+  const href = base + 'lessons/' + lesson.id + '/';
+
+  return {
+    href,
+    // Адреса всех языковых версий — чтобы показать прогресс, даже если
+    // человек проходил урок в переводе (отметки хранятся по адресу страницы)
+    progressPaths: langs.map(l => (l === DEFAULT_LANG ? href : `${href}${l}/`)).join(' '),
+    langs: langs.map(l => LANG_NAMES[l].short),
+    cover: buildUrl(lesson.data.cover),
+    title: lesson.data.title,
+    description: lesson.data.description,
+    duration: lesson.data.duration,
+    tools: lesson.data.tools,
+    difficulty: lesson.data.difficulty,
+    qgis: lesson.data.qgis,
+    topics: lesson.data.topics,
+  };
+});
 
 // Значения для панели фильтров — собираем из самих уроков
 const allTopics = [...new Set(cards.flatMap(c => c.topics))].sort();
@@ -75,7 +98,7 @@ const allDifficulties = [...new Set(cards.map(c => c.difficulty).filter(Boolean)
       {cards.map((card) => (
         <a
           href={card.href}
-          data-progress-path={card.href}
+          data-progress-paths={card.progressPaths}
           data-topics={card.topics.join('|')}
           data-difficulty={card.difficulty ?? ''}
           class="group block rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
@@ -111,6 +134,12 @@ const allDifficulties = [...new Set(cards.map(c => c.difficulty).filter(Boolean)
                   style="background-color: var(--color-warning-muted); color: var(--color-warning);"
                 >QGIS {card.qgis}</span>
               )}
+              {/* Языки урока — показываем только если перевод действительно есть */}
+              {card.langs.length > 1 && (
+                <span class="px-2 py-1 rounded-full border border-[var(--color-border)] font-medium tracking-wide">
+                  {card.langs.join(' · ')}
+                </span>
+              )}
             </div>
 
             <!-- Прогресс по уроку: заполняется скриптом из localStorage,
@@ -134,12 +163,22 @@ const allDifficulties = [...new Set(cards.map(c => c.difficulty).filter(Boolean)
 <script>
   // Показываем на карточках прогресс из localStorage —
   // тем же ключом его сохраняет страница урока (LessonLayout).
-  document.querySelectorAll<HTMLElement>('[data-progress-path]').forEach(card => {
-    const key = 'gis-lessons:progress:' + card.getAttribute('data-progress-path');
+  document.querySelectorAll<HTMLElement>('[data-progress-paths]').forEach(card => {
+    // У урока может быть несколько языковых версий, и отметки шагов
+    // хранятся отдельно по адресу каждой. Показываем ту, где пройдено больше.
+    const paths = (card.getAttribute('data-progress-paths') || '').split(' ').filter(Boolean);
     try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null');
-      const doneCount = Array.isArray(saved?.done) ? saved.done.length : 0;
-      const total = typeof saved?.total === 'number' ? saved.total : 0;
+      let doneCount = 0;
+      let total = 0;
+      for (const path of paths) {
+        const saved = JSON.parse(localStorage.getItem('gis-lessons:progress:' + path) || 'null');
+        const savedDone = Array.isArray(saved?.done) ? saved.done.length : 0;
+        const savedTotal = typeof saved?.total === 'number' ? saved.total : 0;
+        if (savedTotal > 0 && savedDone / savedTotal > (total > 0 ? doneCount / total : 0)) {
+          doneCount = savedDone;
+          total = savedTotal;
+        }
+      }
       if (doneCount === 0 || total === 0) return;
 
       const slot = card.querySelector<HTMLElement>('[data-progress-slot]');

@@ -3,13 +3,16 @@
 // ThemeToggle.astro — кнопка переключения темы
 // Три режима по кругу: светлая → тёмная → системная
 // ====================================================
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
+const t = useTranslations(getLangFromUrl(Astro.url));
 ---
 
 <button
   id="theme-toggle"
   type="button"
-  aria-label="Переключить тему"
-  title="Переключить тему"
+  aria-label={t('theme.toggle')}
+  title={t('theme.toggle')}
   class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors"
 >
   <!-- Иконка "светлая" (солнце) -->

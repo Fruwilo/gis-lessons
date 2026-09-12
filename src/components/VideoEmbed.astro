@@ -7,13 +7,16 @@
 // id — это код из адреса видео (для YouTube — после v=, для RuTube — из /video/КОД/)
 // ====================================================
 
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
 interface Props {
   provider: 'youtube' | 'rutube';
   id: string;
   title?: string;
 }
 
-const { provider, id, title = 'Видео' } = Astro.props;
+const t = useTranslations(getLangFromUrl(Astro.url));
+const { provider, id, title = t('video.title') } = Astro.props;
 
 // Адрес для встраивания зависит от платформы
 const src =

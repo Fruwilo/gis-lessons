@@ -6,6 +6,8 @@
 // На мобильных: оглавление сворачивается в <details> над контентом.
 // ====================================================
 import BaseLayout from './BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+import { getLangFromUrl, translateDifficulty, useTranslations, type Lang } from '../i18n/ui';
 
 interface Props {
   title: string;
@@ -15,9 +17,15 @@ interface Props {
   difficulty?: string;
   qgis?: string;
   headings: { depth: number; slug: string; text: string }[];
+  /** Языки, на которых есть этот урок. Один язык — переключателя не будет. */
+  langOptions?: { lang: Lang; href: string }[];
 }
 
-const { title, description, duration, tools, difficulty, qgis, headings } = Astro.props;
+const { title, description, duration, tools, difficulty, qgis, headings, langOptions = [] } = Astro.props;
+
+// Язык страницы берём из адреса: /lessons/<урок>/fr/ — французская версия
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 
 // В TOC показываем только h2 и h3
 const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 3);
@@ -40,15 +48,28 @@ for (const h of tocHeadings) {
   <!-- Полоска прогресса чтения: ширина = процент прокрутки страницы -->
   <div id="reading-progress" class="fixed top-0 left-0 h-[3px] w-0 bg-[var(--color-accent)] z-[60]"></div>
 
-  <article class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+  {/* Подписи для скриптов внизу файла: они выполняются в браузере
+      и до пропсов Astro не дотягиваются — передаём через data-атрибуты */}
+  <article
+    class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10"
+    data-step-mark={t('step.mark')}
+    data-step-done={t('step.done')}
+    data-progress-count={t('progress.count', { done: '{done}', total: '{total}' })}
+  >
     <header class="mb-8 sm:mb-10">
+      {langOptions.length > 1 && (
+        <div class="flex justify-end mb-3">
+          <LangSwitch current={lang} options={langOptions} />
+        </div>
+      )}
+
       <div class="flex flex-wrap gap-2 mb-4 text-xs">
         <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">{duration}</span>
         {tools.map(tool => (
           <span class="px-2 py-1 rounded-full bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">{tool}</span>
         ))}
         {difficulty && (
-          <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">{difficulty}</span>
+          <span class="px-2 py-1 rounded-full bg-[var(--color-accent-muted)] text-[var(--color-accent)]">{translateDifficulty(lang, difficulty)}</span>
         )}
         {/* Версия QGIS: в других версиях пункты меню называются иначе,
             поэтому она должна быть видна сразу, а не в тексте урока */}
@@ -66,7 +87,7 @@ for (const h of tocHeadings) {
     <div class="md:grid md:grid-cols-[200px_1fr] md:gap-10 lg:grid-cols-[220px_1fr] lg:gap-12">
       <aside class="mb-6 md:mb-0">
         <details class="md:hidden border border-[var(--color-border)] rounded-md">
-          <summary class="px-4 py-2 font-semibold cursor-pointer select-none">Содержание</summary>
+          <summary class="px-4 py-2 font-semibold cursor-pointer select-none">{t('toc.title')}</summary>
           <nav class="px-4 pb-3">
             <ul class="space-y-1 text-sm">
               {tocHeadings.map(h => (
@@ -76,11 +97,11 @@ for (const h of tocHeadings) {
           </nav>
         </details>
 
-        <nav class="hidden md:block sticky top-[65px] max-h-[calc(100vh-65px-1rem)] overflow-y-auto" aria-label="Содержание">
+        <nav class="hidden md:block sticky top-[65px] max-h-[calc(100vh-65px-1rem)] overflow-y-auto" aria-label={t('toc.title')}>
           <!-- Прогресс по шагам урока (заполняется скриптом, если в уроке есть шаги) -->
           <div id="lesson-progress" class="hidden mb-4">
             <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-1.5">
-              <span class="font-semibold uppercase tracking-wider">Прогресс</span>
+              <span class="font-semibold uppercase tracking-wider">{t('progress.title')}</span>
               <span data-progress-text></span>
             </div>
             <div class="h-1.5 rounded-full bg-[var(--color-surface-muted)] overflow-hidden">
@@ -88,7 +109,7 @@ for (const h of tocHeadings) {
             </div>
           </div>
 
-          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Содержание</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">{t('toc.title')}</p>
           <ul class="space-y-2 text-sm">
             {tocGroups.map(group => (
               <li data-toc-group={group.slug}>
@@ -204,6 +225,13 @@ for (const h of tocHeadings) {
   const STORAGE_KEY = 'gis-lessons:progress:' + location.pathname;
   const stepHeadings = Array.from(document.querySelectorAll<HTMLElement>('.prose h3[id]'));
 
+  // Подписи кнопок — на языке урока. Их положил в data-атрибуты макет выше:
+  // скрипт выполняется в браузере и до пропсов Astro не дотягивается.
+  const i18nEl = document.querySelector<HTMLElement>('[data-step-mark]');
+  const LABEL_MARK = i18nEl?.dataset.stepMark || 'Отметить шаг выполненным';
+  const LABEL_DONE = i18nEl?.dataset.stepDone || '✓ Шаг выполнен';
+  const LABEL_COUNT = i18nEl?.dataset.progressCount || '{done} из {total}';
+
   if (stepHeadings.length > 0) {
     let done: Set<string>;
     try {
@@ -237,11 +265,15 @@ for (const h of tocHeadings) {
       document.querySelectorAll<HTMLElement>('.step-done-btn').forEach(btn => {
         const isDone = done.has(btn.getAttribute('data-step-id') || '');
         btn.classList.toggle('is-done', isDone);
-        btn.textContent = isDone ? '✓ Шаг выполнен' : 'Отметить шаг выполненным';
+        btn.textContent = isDone ? LABEL_DONE : LABEL_MARK;
       });
       // Полоса прогресса в сайдбаре
       if (progressBarEl) progressBarEl.style.width = (done.size / stepHeadings.length) * 100 + '%';
-      if (progressTextEl) progressTextEl.textContent = `${done.size} из ${stepHeadings.length}`;
+      if (progressTextEl) {
+        progressTextEl.textContent = LABEL_COUNT
+          .replace('{done}', String(done.size))
+          .replace('{total}', String(stepHeadings.length));
+      }
     }
 
     function toggleStep(id: string) {
@@ -255,8 +287,8 @@ for (const h of tocHeadings) {
       const btn = document.createElement('button');
       btn.className = 'step-check';
       btn.type = 'button';
-      btn.setAttribute('aria-label', 'Отметить шаг выполненным');
-      btn.title = 'Отметить шаг выполненным';
+      btn.setAttribute('aria-label', LABEL_MARK);
+      btn.title = LABEL_MARK;
       btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
       btn.addEventListener('click', () => toggleStep(h.id));
       h.prepend(btn);

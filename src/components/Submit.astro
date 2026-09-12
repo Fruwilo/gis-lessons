@@ -13,6 +13,8 @@
 //   </Submit>
 // ====================================================
 
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
 interface Props {
   /** Срок сдачи: «до конца занятия», «до следующего занятия» */
   deadline?: string;
@@ -21,6 +23,7 @@ interface Props {
 }
 
 const { deadline, where } = Astro.props;
+const t = useTranslations(getLangFromUrl(Astro.url));
 ---
 
 <section class="submit my-8 rounded-lg border-2 border-[var(--color-accent)] bg-[var(--color-surface)] overflow-hidden">
@@ -38,7 +41,7 @@ const { deadline, where } = Astro.props;
       <path d="m9 15 2 2 4-4" />
     </svg>
 
-    <span class="font-semibold" style="color: var(--color-accent);">Что сдать</span>
+    <span class="font-semibold" style="color: var(--color-accent);">{t('submit.title')}</span>
 
     {deadline && (
       <span class="ml-auto text-xs px-2 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-text-muted)]">
@@ -50,7 +53,7 @@ const { deadline, where } = Astro.props;
   <div class="submit-body px-4 py-3 text-[0.95rem] leading-relaxed">
     {where && (
       <p class="!mt-0 text-[var(--color-text-muted)]">
-        <span class="font-semibold text-[var(--color-text)]">Куда:</span> {where}
+        <span class="font-semibold text-[var(--color-text)]">{t('submit.where')}</span> {where}
       </p>
     )}
     <slot />

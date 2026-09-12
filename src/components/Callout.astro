@@ -6,6 +6,8 @@
 //   <Callout type="warning" title="Осторожно">...</Callout>
 // ====================================================
 
+import { getLangFromUrl, useTranslations } from '../i18n/ui';
+
 interface Props {
   type?: 'tip' | 'warning' | 'info' | 'attention';
   title?: string;
@@ -13,13 +15,16 @@ interface Props {
 
 const { type = 'info', title } = Astro.props;
 
-// Для каждого типа: цвет (имя CSS-переменной), эмодзи, заголовок по умолчанию
+// Заголовок по умолчанию — на языке урока (см. src/i18n/ui.ts)
+const t = useTranslations(getLangFromUrl(Astro.url));
+
+// Для каждого типа: цвет (имя CSS-переменной) и эмодзи
 const config = {
-  tip:       { color: 'success',   icon: '💡', label: 'Совет' },
-  warning:   { color: 'warning',   icon: '⚠️', label: 'Важно' },
-  info:      { color: 'info',      icon: 'ℹ️', label: 'Заметка' },
-  attention: { color: 'attention', icon: '👀', label: 'Обратите внимание' },
-};
+  tip:       { color: 'success',   icon: '💡' },
+  warning:   { color: 'warning',   icon: '⚠️' },
+  info:      { color: 'info',      icon: 'ℹ️' },
+  attention: { color: 'attention', icon: '👀' },
+} as const;
 
 const c = config[type];
 ---
@@ -29,7 +34,7 @@ const c = config[type];
   style={`border-left-color: var(--color-${c.color}); background-color: var(--color-${c.color}-muted);`}
 >
   <div class="font-semibold mb-1">
-    <span class="mr-1">{c.icon}</span>{title ?? c.label}
+    <span class="mr-1">{c.icon}</span>{title ?? t(`callout.${type}`)}
   </div>
   <div class="text-[0.95rem] leading-relaxed">
     <slot />

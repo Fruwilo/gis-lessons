@@ -1,0 +1,51 @@
+---
+// ====================================================
+// LangSwitch.astro — переключатель языка урока
+//
+// Показывается только у тех уроков, для которых есть перевод:
+// список вариантов приходит готовым из [...slug].astro.
+// Если вариант один — компонент не рисует ничего.
+//
+// Это обычные ссылки на соседнюю страницу, без JS: перевод —
+// такая же статическая страница, как и оригинал.
+// ====================================================
+import { LANG_NAMES, useTranslations, type Lang } from '../i18n/ui';
+
+interface Props {
+  /** Язык страницы, на которой мы сейчас */
+  current: Lang;
+  /** Все доступные языки этого урока: код + адрес страницы */
+  options: { lang: Lang; href: string }[];
+}
+
+const { current, options } = Astro.props;
+const t = useTranslations(current);
+---
+
+{options.length > 1 && (
+  <nav
+    class="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5"
+    aria-label={t('lang.label')}
+  >
+    {options.map(option => {
+      const isCurrent = option.lang === current;
+      return (
+        <a
+          href={option.href}
+          hreflang={option.lang}
+          lang={option.lang}
+          title={LANG_NAMES[option.lang].full}
+          aria-current={isCurrent ? 'true' : undefined}
+          class:list={[
+            'px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors',
+            isCurrent
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-accent)]',
+          ]}
+        >
+          {LANG_NAMES[option.lang].short}
+        </a>
+      );
+    })}
+  </nav>
+)}
