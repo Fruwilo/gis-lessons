@@ -1,0 +1,460 @@
+---
+title: "Où ouvrir un café à Tver ?"
+description: "On part d'un jeu de données urbaines tout prêt, on construit des zones d'influence avec des tampons et on trouve les emplacements prometteurs pour un nouvel établissement."
+duration: "~1 h 30"
+tools: ["QGIS", "QuickMapServices", "QuickOSM"]
+# difficulty и topics — канонические ключи (одинаковые во всех языках):
+# difficulty переводится при выводе, topics используются фильтром на главной
+difficulty: "средний"
+topics: ["векторный анализ", "OpenStreetMap"]
+order: 3
+cover: "images/coffee-lab/10-layout-print.png"
+lang: "fr"
+translationOf: "coffee-lab"
+---
+
+<Callout type="info" title="Le matériel de la séance">
+
+Téléchargez le jeu de données tout prêt — nous travaillerons avec lui toute la séance :
+<a href="https://disk.yandex.ru/d/fzCcxRSerNxfLQ" target="_blank" rel="noopener noreferrer">Télécharger le jeu de données (GeoPackage)</a>
+
+C'est un seul fichier `.gpkg`, qui contient déjà trois couches : les cafés, les arrêts de bus et les immeubles d'habitation. Les données sont **déjà préparées** — ramenées au bon système de coordonnées (EPSG:32636, zone 36N) : il n'y a rien à reprojeter.
+
+</Callout>
+
+<Callout type="attention">
+
+Avant, ces données se téléchargeaient « en direct » via l'extension QuickOSM. Le service fonctionne aujourd'hui de façon instable ; nous utilisons donc en cours un jeu tout prêt, et le téléchargement manuel est passé **en Annexe, à la fin** — vous l'essaierez quand QuickOSM sera de nouveau d'aplomb.
+
+</Callout>
+
+<Callout type="tip" title="Les noms de menus dans cette leçon">
+
+Les chemins de menus sont donnés **pour QGIS en français**, avec l'original anglais entre parenthèses — les boîtes de dialogue de traitement affichent souvent les paramètres en anglais. Si votre QGIS s'ouvre dans une autre langue : **Préférences → Options… → Général → Paramètres régionaux**.
+
+Les **noms des couches** (`cafe`, `bus_stops`, `buildings`…) viennent des données elles-mêmes : ils ne se traduisent pas.
+
+</Callout>
+
+## Aide-mémoire : quelles données nous prenons, et pourquoi || Aide-mémoire : les données
+
+Nous utilisons aujourd'hui trois couches d'objets urbains :
+
+| Quoi | Géométrie | Origine dans le jeu de données |
+| --- | --- | --- |
+| Cafés | point | OpenStreetMap |
+| Arrêts de bus | point | données « Transport de la Haute-Volga » |
+| Immeubles d'habitation | polygone | OpenStreetMap |
+
+<Callout type="info" title="D'où viennent les données">
+
+Les cafés et les immeubles viennent d'**OpenStreetMap (OSM)**, la carte libre et collaborative du monde. Les arrêts, eux, viennent des données ouvertes du projet **« Transport de la Haute-Volga »** (Транспорт Верхневолжья) : leur jeu d'attributs (les colonnes de la table) peut donc différer un peu de ce qu'on a l'habitude de voir dans OSM. Cela ne change rien à la logique de l'analyse.
+
+</Callout>
+
+**La logique de l'analyse** (voilà où nous allons) :
+
+1. On charge les trois couches prêtes : cafés, arrêts, immeubles d'habitation.
+2. Tampon de 300 m autour des cafés existants → la « zone des concurrents ».
+3. Tampon de 200 m autour des arrêts → la « zone de bonne accessibilité ».
+4. Parmi tous les immeubles d'habitation, on ne garde que ceux qui **tombent dans la zone d'accessibilité** et **NE tombent PAS dans la zone des concurrents**.
+5. Résultat : une carte des immeubles candidats, à côté desquels il vaut la peine d'ouvrir un café.
+
+<Callout type="tip">
+
+Toutes les distances (300 m, 200 m) se comptent en mètres. Pour que cela fonctionne, les données doivent être dans un système de coordonnées **projeté**. C'est déjà fait dans notre jeu : il est en **EPSG:32636** (UTM zone 36N, justement celle dans laquelle tombe Tver). Si vous téléchargez un jour des données vous-même, ce point est expliqué dans l'Annexe.
+
+</Callout>
+
+## Partie 1. On prépare le projet et on charge les données (~15 min) || Partie 1. Projet et données
+
+En deux minutes, vous allez avoir à l'écran un jeu de données tout prêt sur le centre de Tver : cafés, arrêts et immeubles d'habitation. Ensuite, nous transformerons ces points et ces polygones en une carte qui a du sens.
+
+### Étape 1 — Réglez le projet et son système de coordonnées || Étape 1. Projet et coordonnées
+
+1. Ouvrez QGIS et créez un nouveau projet.
+2. Menu **Projet → Propriétés du projet → SCR** (Project → Properties → CRS).
+3. Dans le champ de recherche, saisissez `32636`, choisissez **WGS 84 / UTM zone 36N**, cliquez sur **OK**.
+
+<Callout type="info" title="À quoi ça sert">
+
+Nos données sont déjà en EPSG:32636. Nous mettons le projet dans le même système de coordonnées pour que tout « se calcule en mètres » et que les couches se superposent proprement entre elles et sur le fond de carte.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/01-crs-setup.png"
+  alt="Réglage du système de coordonnées du projet"
+  caption="Fenêtre des propriétés du projet avec EPSG:32636 sélectionné"
+/>
+
+### Étape 2 — Ajoutez le fond Yandex via QuickMapServices || Étape 2. Fond Yandex
+
+Le fond de carte, c'est l'« arrière-plan » qui permet de se repérer. Nous le prendrons via l'extension **QuickMapServices** (QMS) : elle donne accès à des centaines de fonds tout prêts, dont ceux de Yandex.
+
+**Si l'extension est déjà installée** (c'est souvent le cas), passez à la liste suivante. **Sinon**, installez-la une bonne fois :
+
+1. Menu **Extensions → Installer/Gérer les extensions**.
+2. Dans le champ de recherche, saisissez **QuickMapServices**.
+3. Cliquez sur **« Installer »**.
+
+Ajoutons maintenant le fond lui-même :
+
+1. Menu **Internet → QuickMapServices → Search QMS** (Rechercher dans NextGIS QMS). Le panneau de recherche s'ouvre à droite.
+2. Dans le champ de recherche du panneau, saisissez `yandex`.
+3. Dans la liste des résultats, trouvez le fond **Yandex** et cliquez sur **Add** (Ajouter) à côté.
+4. Le fond apparaît dans le projet. Dans le panneau **Couches**, faites-le glisser **tout en bas** — il doit servir d'arrière-plan sous toutes les données.
+5. Approchez-vous du centre de Tver (quartier de la place Mikhaïl-de-Tver, rue Sovetskaïa).
+
+<Callout type="tip" title="Quel Yandex choisir">
+
+La liste en propose plusieurs : **Yandex Maps** (carte classique avec les noms de rues) et **Yandex Satellite** (image satellite). Pour cette séance, la carte classique est plus pratique : on y voit les rues et les étiquettes, faciles à suivre. Mais vous pouvez essayer le satellite : on verra alors les vrais toits sous les polygones des immeubles.
+
+</Callout>
+
+<Callout type="attention">
+
+Sur les ordinateurs de l'université, l'extension ou la recherche QMS ne s'ouvre parfois pas, à cause des restrictions réseau. Dans ce cas, utilisez le fond intégré : panneau **Explorateur → XYZ Tiles → double-clic sur OpenStreetMap**. Il suffit largement pour la séance.
+
+</Callout>
+
+<Callout type="info" title="Au cas où vous auriez oublié">
+
+Le zoom se fait à la molette ; le déplacement sur la carte, en maintenant le bouton du milieu enfoncé ou avec l'outil « Main ».
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/02-tver-center-osm.png"
+  alt="Fond Yandex avec le centre de Tver"
+  caption="Le centre de Tver dans la fenêtre de carte, à une échelle d'environ 1:20 000"
+/>
+
+### Étape 3 — Chargez les données du jeu fourni || Étape 3. Données du jeu
+
+1. Retrouvez le fichier téléchargé (format `.gpkg`).
+2. **Faites-le simplement glisser** à la souris depuis l'explorateur de fichiers vers la fenêtre de QGIS.
+3. QGIS affiche une fenêtre avec la liste des couches contenues dans le fichier. Sélectionnez les trois : **cafe**, **bus_stops**, **buildings** — puis cliquez sur **Ajouter les couches**.
+
+Les trois couches apparaissent dans le panneau **Couches**, à gauche, et se dessinent par-dessus le fond de carte.
+
+<Callout type="info" title="Qu'est-ce qu'un GeoPackage (.gpkg)">
+
+Remarquez : vous avez ajouté **un seul fichier**, et **trois** couches sont arrivées dans le projet. C'est ainsi qu'est fait un GeoPackage — un fichier-conteneur (en réalité une petite base de données dans un seul fichier), à l'intérieur duquel peuvent vivre autant de couches qu'on veut. Pratique : au lieu d'une poignée de fichiers épars, une seule « caisse » bien rangée. Un peu plus loin, nous rangerons nous-mêmes nos résultats dans une caisse de ce genre.
+
+</Callout>
+
+<Callout type="tip">
+
+Si le glisser-déposer n'a pas fonctionné, on fait la même chose par le menu **Couche → Ajouter une couche → Ajouter une couche vecteur**, en indiquant le fichier `.gpkg` et en choisissant les couches voulues.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/05-three-layers.png"
+  alt="Les trois couches dans le projet"
+  caption="Les couches cafe, bus_stops, buildings par-dessus le fond OSM"
+/>
+
+## Partie 2. Zones d'influence : on construit les tampons (~25 min) || Partie 2. Tampons
+
+Nous allons maintenant construire autour de chaque café et de chaque arrêt une **zone tampon** d'un rayon donné. C'est le premier outil d'analyse de notre panoplie.
+
+<Callout type="info" title="Qu'est-ce qu'un tampon">
+
+Un polygone qui entoure l'objet de départ à une distance donnée. Un point → un cercle de rayon R. Une ligne → un « couloir » de largeur 2R. Un polygone → un polygone élargi.
+
+</Callout>
+
+### Étape 4 — Tampon autour des cafés : la zone des concurrents (300 m) || Étape 4. Tampon cafés (300 m)
+
+1. Menu **Vecteur → Outils de géotraitement → Tampon** (Vector → Geoprocessing → Buffer).
+2. **Input layer** (couche source) : `cafe`.
+3. **Distance** : `300`. Unités : **meters** (mètres).
+4. Cochez **Dissolve result** (Regrouper le résultat) — sinon vous obtiendrez des dizaines de cercles séparés qui se chevauchent, alors qu'il nous faut une seule zone d'ensemble.
+5. **Buffered (output)** — c'est là qu'on enregistre le résultat. Cliquez sur le bouton `…` à droite du champ et procédez ainsi :
+   - Dans le menu qui s'ouvre, choisissez **« Enregistrer dans un GeoPackage… »** (Save to GeoPackage…).
+   - Une fenêtre d'enregistrement classique s'ouvre. **La première fois**, nous créons un nouveau fichier : nom `tver_analysis.gpkg`, cliquez sur **Enregistrer**.
+   - Ensuite surgit **une petite fenêtre à part** avec un champ **« Nom de la couche »** (Layer name). Saisissez `cafe_buffer` et cliquez sur **OK**.
+6. Cliquez sur **Run** (Exécuter).
+
+<Callout type="tip" title="Pourquoi deux fenêtres et pas une">
+
+Vous venez de remarquer une bizarrerie : on demande d'abord le **nom du fichier**, puis séparément le **nom de la couche**. C'est exactement la logique du GeoPackage vue à l'étape 3. Le fichier `tver_analysis.gpkg` est un conteneur, et beaucoup de couches peuvent vivre à l'intérieur. QGIS précise donc : « dans quel fichier-conteneur ranger » et « comment nommer la couche à l'intérieur ». C'est dans ce fichier que nous rangerons tous les résultats de la séance.
+
+</Callout>
+
+<Callout type="info" title="Où enregistrer le fichier">
+
+Créez le fichier `tver_analysis.gpkg` dans un dossier dédié à la séance (dans « Documents », par exemple), pour le retrouver facilement ensuite. Retenez **où** vous l'avez enregistré : nous y reviendrons à chacune des étapes suivantes.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/11-save-gpkg-layername.png"
+  alt="Fenêtre d'enregistrement d'une couche dans un GeoPackage"
+  caption="D'abord le nom du fichier tver_analysis.gpkg, puis dans une fenêtre à part le nom de la couche cafe_buffer"
+/>
+
+### Étape 5 — Colorez le tampon des cafés || Étape 5. Couleur du tampon
+
+1. Double-clic sur la couche `cafe_buffer` → onglet **Symbologie**.
+2. Remplissage rouge, opacité d'environ **50 %**.
+3. Contour : aucun, ou un trait rouge fin.
+4. Cliquez sur **OK**.
+
+<Figure
+  src="images/coffee-lab/06-cafe-buffer.png"
+  alt="Tampon autour des cafés"
+  caption="Les « nuages » rouges autour des cafés existants : les zones où un nouveau café n'a pas intérêt à aller"
+/>
+
+### Étape 6 — Tampon autour des arrêts : la zone d'accessibilité (200 m) || Étape 6. Tampon arrêts (200 m)
+
+On fait exactement comme à l'étape 4 ; seuls changent la couche, le rayon et le nom du résultat :
+
+1. De nouveau **Vecteur → Outils de géotraitement → Tampon**.
+2. **Input layer :** `bus_stops`.
+3. **Distance :** `200`, unités **meters**.
+4. Case **Dissolve result** cochée.
+5. **Output :** cliquez sur `…` → **« Enregistrer dans un GeoPackage… »** → choisissez **le même fichier** `tver_analysis.gpkg` → **Enregistrer** → dans la fenêtre du nom de couche, saisissez `busstop_buffer` → **OK**.
+6. **Run**.
+
+<Callout type="attention">
+
+À cette étape, choisissez **le même** fichier `tver_analysis.gpkg` que précédemment — n'en créez pas un nouveau. QGIS va simplement y **ajouter** une couche de plus, à côté de `cafe_buffer`. C'est tout l'intérêt du GeoPackage : un fichier, beaucoup de couches. Si QGIS redemande « ajouter la couche au fichier existant ? », acceptez.
+
+</Callout>
+
+Colorez `busstop_buffer` : remplissage vert, opacité 50 % (comme à l'étape 5, mais en vert).
+
+<Callout type="tip" title="Matière à réflexion">
+
+Pourquoi 300 m pour les cafés et 200 m pour les arrêts ? Ce n'est pas un dogme. 300 m ≈ 4 minutes à pied : une distance confortable, à laquelle on « se souvient » encore qu'il y a un établissement connu à côté. 200 m jusqu'à l'arrêt, c'est « y aller sans même y penser ». Après la séance, essayez de changer ces valeurs et regardez comment le résultat évolue.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/07-both-buffers.png"
+  alt="Les deux tampons sur la carte"
+  caption="Les zones vertes : là où l'on arrive facilement depuis les transports. Les rouges : là où les concurrents sont denses"
+/>
+
+## Partie 3. Trouver les immeubles candidats : intersection et différence (~25 min) || Partie 3. Immeubles candidats
+
+Nous avons trois couches de polygones : les immeubles d'habitation, la zone d'accessibilité et la zone des concurrents. Croisons-les selon la bonne logique. Les résultats, comme avant, se rangent dans `tver_analysis.gpkg`.
+
+### Étape 7 — Intersection : les immeubles dans la zone d'accessibilité || Étape 7. Intersection
+
+Ne prenons que les immeubles d'habitation qui tombent dans le tampon des arrêts.
+
+1. Menu **Vecteur → Outils de géotraitement → Intersection** (Vector → Geoprocessing → Intersection).
+2. **Input layer :** `buildings`.
+3. **Overlay layer :** `busstop_buffer` (le tampon des arrêts).
+4. **Intersection (output) :** `…` → **« Enregistrer dans un GeoPackage… »** → fichier `tver_analysis.gpkg` → nom de couche `buildings_near_transit` → **OK**.
+5. Cliquez sur **Run**.
+
+<Callout type="attention">
+
+Le calcul de l'intersection prendra un certain temps. C'est normal : profitez-en pour souffler pendant que le traitement tourne.
+
+</Callout>
+
+Le résultat : uniquement les immeubles d'habitation faciles d'accès depuis un arrêt. Les autres ont disparu.
+
+<Figure
+  src="images/coffee-lab/08-intersection-result.png"
+  alt="Résultat de l'intersection"
+  caption="Les immeubles qui recoupent la zone verte d'accessibilité"
+/>
+
+### Étape 8 — Différence : on exclut la zone des concurrents || Étape 8. Différence
+
+Des « immeubles proches des transports », nous soustrayons la « zone des concurrents ».
+
+1. Menu **Vecteur → Outils de géotraitement → Différence** (Vector → Geoprocessing → Difference).
+2. **Input layer :** `buildings_near_transit` (le résultat de l'étape précédente).
+3. **Overlay layer :** `cafe_buffer` (le tampon des cafés).
+4. **Difference (output) :** `…` → **« Enregistrer dans un GeoPackage… »** → fichier `tver_analysis.gpkg` → nom de couche `candidates` → **OK**.
+5. Cliquez sur **Run**.
+
+<Callout type="info" title="Ce qui vient de se passer">
+
+De chaque bâtiment, on a « découpé » la partie qui tombe dans la zone rouge des concurrents. Si un bâtiment était entièrement dans la zone rouge, il a disparu. S'il en dépassait ne serait-ce que d'un morceau, ce morceau est resté dans le résultat.
+
+</Callout>
+
+### Étape 9 — Mettez en forme la carte finale || Étape 9. Carte finale
+
+1. Double-clic sur `candidates` → **Symbologie**.
+2. Remplissage vif (orange, bleu ou autre), pas de contour.
+3. Opacité 0 % de transparence : la couche doit se voir.
+4. **OK**.
+
+Rangez les couches dans le panneau **Couches**, de haut en bas :
+
+- `candidates` (tout en haut : c'est le résultat principal)
+- `cafe`, `bus_stops` (les points)
+- `cafe_buffer`, `busstop_buffer` (les tampons)
+- `buildings` (tous les immeubles d'habitation — le « contexte » gris)
+- Yandex (le fond de carte, tout en bas)
+
+Donnez à `buildings` un remplissage gris clair avec un contour foncé fin — pour qu'ils servent d'arrière-plan sans distraire.
+
+<Figure
+  src="images/coffee-lab/09-final-map.png"
+  alt="Carte finale"
+  caption="Les immeubles bleus sont votre réponse à la question « où ouvrir un café à Tver ? »"
+/>
+
+<Callout type="tip" title="Matière à réflexion">
+
+Regardez la carte. Où les candidats se concentrent-ils ? Correspondent-ils aux endroits de Tver où, d'après votre ressenti, un nouveau café « marcherait » ? Qu'est-ce que notre analyse n'a **pas** pris en compte — le stationnement, le flux de passants, le prix du loyer, l'ensoleillement de la vitrine, le pouvoir d'achat des habitants de tel ou tel immeuble ?
+
+</Callout>
+
+## Bonus 1. Mise en page A4 pour l'impression
+
+Assemblons le résultat dans une mise en page imprimable, ou à remettre à un commanditaire.
+
+1. Menu **Projet → Mise en page → Nouvelle mise en page**.
+2. Saisissez le nom : `cafe_suitability`.
+3. Dans la fenêtre de mise en page : **Ajouter → Carte**. Étirez un rectangle sur la feuille.
+4. Ajoutez par-dessus :
+   - un **Titre** (élément Texte) : « Où ouvrir un café à Tver ».
+   - une **Légende** (Add Legend) — ne gardez que les couches importantes : `candidates`, `cafe`, `bus_stops`, les tampons.
+   - une **Barre d'échelle** (Add Scale Bar).
+   - une **Flèche du nord** (Add Arrow → North Arrow).
+5. Exportez : **Mise en page → Exporter au format PDF** ou **au format image** (PNG).
+
+<Figure
+  src="images/coffee-lab/10-layout-print.png"
+  alt="La mise en page terminée"
+  caption="La feuille finale, prête à imprimer ou à exporter"
+/>
+
+## Bonus 2. Pas un café, mais un point relais
+
+Refaites toute l'analyse pour un autre type d'établissement. La logique est la même ; seuls changent les données et les rayons :
+
+| Établissement | Concurrents | Rayon |
+| --- | --- | --- |
+| Pharmacie | autres pharmacies | 400 m |
+| Garage pneus | autres garages pneus | 1000 m |
+| Point café à emporter | cafés et salons de café | 150 m |
+| Barbier | autres barbiers | 500 m |
+
+Réfléchissez aux critères qui comptent vraiment pour votre objet — et aux données qui pourraient les décrire. (Si QuickOSM refonctionne d'ici là, la couche des concurrents peut se télécharger soi-même : voir l'Annexe.)
+
+## Bonus 3. Qui est le mieux placé ? — compter les candidats par quartier || Bonus 3. Candidats par quartier
+
+Si vous disposez d'une couche des quartiers ou des micro-quartiers de Tver (des polygones), vous pouvez comparer quel quartier compte le plus de candidats.
+
+1. Chargez la couche des quartiers (`districts`) — elle est dans le jeu de données, ou téléchargez-la vous-même via QuickOSM (requête `place=suburb`, voir l'Annexe).
+2. Transformons d'abord les polygones candidats en points : ils se comptent plus commodément ensuite. **Vecteur → Outils de géométrie → Centroïdes** (Vector → Geometry Tools → Centroids). Enregistrez le résultat dans `tver_analysis.gpkg`, nom de couche `candidates_centroids`.
+3. Menu **Vecteur → Analyse → Compter les points dans un polygone** (Count Points in Polygon).
+   - **Polygons :** les quartiers (`districts`).
+   - **Points :** `candidates_centroids`.
+   - **Count field name :** `candidates`.
+4. Colorez les quartiers thématiquement d'après le champ `candidates`.
+
+<Callout type="info" title="Au cas où vous auriez oublié">
+
+Une carte thématique sur un champ numérique : **Propriétés de la couche → Symbologie → Gradué** (Graduated) → Colonne `candidates` → Mode : intervalles égaux → Classer.
+
+</Callout>
+
+## Annexe. Télécharger les données soi-même avec QuickOSM || Annexe. QuickOSM
+
+<Callout type="attention">
+
+Cette section est **facultative** et servira « pour plus tard ». Le service QuickOSM fonctionne actuellement de façon instable, c'est pourquoi nous utilisons en cours un jeu tout prêt. Mais quand le service sera de nouveau d'aplomb, vous pourrez rassembler les mêmes données vous-même en un bouton — et c'est là le véritable superpouvoir de l'outil.
+
+</Callout>
+
+**QuickOSM** permet d'extraire des données directement depuis OpenStreetMap. Les objets OSM sont décrits par des **attributs (tags)** au format « clé = valeur » : un café, c'est `amenity=cafe` ; un arrêt, `highway=bus_stop` ; un immeuble d'habitation, `building=apartments`.
+
+<Callout type="warning">
+
+Les données issues de QuickOSM arrivent dans le système de coordonnées **EPSG:4326** (des degrés). Pour calculer des tampons en mètres, ces couches doivent être **réenregistrées en EPSG:32636** (c'est montré à l'étape A4). Dans notre jeu tout prêt, c'est déjà fait pour vous.
+
+</Callout>
+
+### Étape A1 — Installez l'extension QuickOSM || Étape A1. Extension QuickOSM
+
+1. Menu **Extensions → Installer/Gérer les extensions**.
+2. Dans le champ de recherche, saisissez **QuickOSM**.
+3. Cliquez sur **« Installer »**.
+
+Après l'installation, une entrée apparaît dans le menu : **Vecteur → QuickOSM → QuickOSM**.
+
+<Callout type="info" title="Ce qui vient de se passer">
+
+QuickOSM est une interface commode vers le serveur **Overpass API**, par lequel se font les requêtes sur la base mondiale d'OSM. Ce serveur se trouve en dehors de votre ordinateur et répond par le réseau : en cas de coupure, la requête peut donc échouer.
+
+</Callout>
+
+### Étape A2 — Téléchargez une couche (l'exemple des cafés) || Étape A2. On télécharge une couche
+
+1. Ouvrez **Vecteur → QuickOSM → QuickOSM**.
+2. Dans l'onglet **Quick query** :
+   - **Key :** `amenity`
+   - **Value :** `cafe`
+   - **In :** choisissez **Canvas Extent** (Emprise du canevas) — « tout ce qui est visible à l'écran en ce moment ».
+3. Cliquez sur **Run query**.
+
+Après quelques secondes apparaît une couche temporaire `amenity_cafe_points`.
+
+<Callout type="attention">
+
+Les couches temporaires sont marquées d'une icône de « petit nuage » dans QGIS et **disparaissent à la fermeture du projet**. Il faut donc impérativement les enregistrer dans un fichier permanent : c'est l'étape suivante.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/03-cafe-points.png"
+  alt="Résultat de la requête — les cafés"
+  caption="Les paramètres de la requête dans l'extension QuickOSM"
+/>
+
+### Étape A3 — Téléchargez les autres couches || Étape A3. Les autres couches
+
+Répétez l'étape A2 pour les autres types :
+
+- Arrêts : **Key** `highway`, **Value** `bus_stop`.
+- Immeubles d'habitation : **Key** `building`, **Value** `apartments`.
+- Quartiers (pour le Bonus 3) : **Key** `place`, **Value** `suburb`.
+
+### Étape A4 — Enregistrez la couche en EPSG:32636 || Étape A4. Reprojection
+
+C'est le point clé du téléchargement manuel : on passe les données en SCR projeté au moment même de l'enregistrement.
+
+1. Clic droit sur la couche temporaire → **Exporter → Sauvegarder les entités sous** (Save Features As).
+2. **Format :** GeoPackage.
+3. **Nom du fichier :** `tver_analysis.gpkg` (le même conteneur que pour les résultats).
+4. **Nom de la couche :** court et parlant, par exemple `cafe`.
+5. **SCR :** cliquez sur l'icône du globe, saisissez `32636` dans la recherche, choisissez **WGS 84 / UTM zone 36N**.
+6. Cochez **« Ajouter le fichier enregistré au projet »**.
+7. Cliquez sur **OK**, puis supprimez la couche temporaire (clic droit → Supprimer).
+
+<Callout type="warning">
+
+Si plus tard un tampon a la taille d'une graine de pavot ou, au contraire, couvre la moitié de l'oblast, c'est que la couche est restée en EPSG:4326. Vérifiez le SCR de la couche (clic droit → **Propriétés → Information**) et réenregistrez-la au besoin avec le bon SCR.
+
+</Callout>
+
+<Figure
+  src="images/coffee-lab/04-save-layer-crs.png"
+  alt="Enregistrement de la couche avec redéfinition du SCR"
+  caption="La fenêtre « Sauvegarder les entités sous » avec EPSG:32636 sélectionné"
+/>
+
+## Ce que nous avons appris
+
+1. Un **GeoPackage** est un fichier-conteneur dans lequel vivent d'un coup plusieurs couches. Un seul `.gpkg` bien rangé au lieu d'une poignée de fichiers épars ; c'est précisément pour cela qu'à l'enregistrement QGIS demande séparément le nom du fichier et le nom de la couche.
+2. La **zone tampon** est la façon standard de décrire la « zone d'influence » d'un objet dans l'espace. Points et lignes se transforment en polygones, avec lesquels on peut ensuite travailler.
+3. L'**intersection et la différence** sont deux opérations de base de l'algèbre spatiale. C'est avec elles que se construit la majorité des analyses d'aptitude.
+4. **Le système de coordonnées, c'est sérieux.** Dans un SCR géographique, les distances se mesurent en degrés ; pour travailler en mètres, il faut un SCR projeté. Pour Tver, c'est l'EPSG:32636.
+5. La **recherche de site (site suitability)** combine des contraintes (« où c'est interdit ») et des attraits (« où c'est souhaitable »). Nous en avons assemblé aujourd'hui une version simple, à deux critères. Dans une vraie mission, les critères se comptent par dizaines, et chacun peut recevoir son propre poids.
+
+Cette même démarche — **données → tampons → intersection/différence** — fonctionne pour toute une classe de problèmes : du choix de l'emplacement d'une borne de recharge pour véhicules électriques à la planification des zones d'intervention des casernes de pompiers.
