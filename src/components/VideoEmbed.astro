@@ -4,6 +4,7 @@
 // Использование:
 //   <VideoEmbed provider="youtube" id="dQw4w9WgXcQ" />
 //   <VideoEmbed provider="rutube" id="abc123def456" title="Название" />
+//   <VideoEmbed provider="rutube" id="abc123def456" p="ключ" />   — приватное видео
 // id — это код из адреса видео (для YouTube — после v=, для RuTube — из /video/КОД/)
 // ====================================================
 
@@ -13,16 +14,18 @@ interface Props {
   provider: 'youtube' | 'rutube';
   id: string;
   title?: string;
+  /** RuTube: ключ доступа к приватному видео — значение ?p= из ссылки */
+  p?: string;
 }
 
 const t = useTranslations(getLangFromUrl(Astro.url));
-const { provider, id, title = t('video.title') } = Astro.props;
+const { provider, id, title = t('video.title'), p } = Astro.props;
 
 // Адрес для встраивания зависит от платформы
 const src =
   provider === 'youtube'
     ? `https://www.youtube-nocookie.com/embed/${id}`
-    : `https://rutube.ru/play/embed/${id}`;
+    : `https://rutube.ru/play/embed/${id}` + (p ? `/?p=${encodeURIComponent(p)}` : '');
 ---
 
 <div class="my-6 overflow-hidden rounded-md border border-[var(--color-border)]">
