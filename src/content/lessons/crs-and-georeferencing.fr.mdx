@@ -1,0 +1,1052 @@
+---
+title: "Une surface digne de confiance"
+description: "On vérifie dans quel système de coordonnées vivent les couches, on mesure la surface de sa municipalité dans quatre SCR et on attrape une erreur de 240 %. Puis on trouve la feuille de carte topographique de l'État-major sur son territoire, on la télécharge et on la géoréférence par les coins du cadre."
+duration: "~1 h 30"
+tools: ["QGIS"]
+# difficulty и topics — канонические ключи (одинаковые во всех языках):
+# difficulty переводится при выводе, topics используются фильтром на главной
+difficulty: "новичок"
+qgis: "3.40 et plus récent"
+topics: ["системы координат", "проекции", "привязка растра", "номенклатура"]
+order: 3
+lang: "fr"
+translationOf: "crs-and-georeferencing"
+---
+
+<Callout type="info" title="Ce qu'il vous faut">
+
+**Le logiciel :** QGIS **3.40 LTR** — le même qu'à la première séance.
+
+**Les données :** <a href="https://disk.yandex.ru/d/5fBTop6zcRH6ug" target="_blank" rel="noopener noreferrer">l'archive « Занятие03_данные.zip »</a>.
+Elle contient deux jeux :
+
+- `tver.gpkg` — le même GeoPackage qu'à la séance 1 : limites des
+  municipalités (MO), localités, routes, rivières ;
+- `topo100k_tver` — le **tableau d'assemblage** des cartes topographiques
+  au 1:100 000 sur l'oblast de Tver : une grille de rectangles, chacun
+  avec son numéro de feuille. C'est un shapefile — cinq fichiers portant
+  le même nom, à ne copier qu'ensemble.
+
+**Internet :** il servira dans la partie 3, pour télécharger la feuille
+de carte topographique.
+
+**Votre territoire** — celui que vous avez tiré au sort à la séance 1.
+
+</Callout>
+
+<Callout type="tip" title="Les noms de menus dans cette leçon">
+
+Tous les chemins de menus sont donnés **pour QGIS en français**. Les
+**noms des couches et des champs** (`boundary_mo`, `name_short`…) et les
+**valeurs dans la table** (`Кесовогорский`…) viennent des données
+elles-mêmes : ils restent en russe.
+
+</Callout>
+
+## Aide-mémoire : quatre codes que vous croiserez aujourd'hui
+
+Au cours magistral, il y avait beaucoup de codes. En pratique, il en faut
+quatre — plus une mesure « de référence » à laquelle on comparera tout.
+
+| Code | Ce que c'est | Ce qu'on peut attendre de la surface |
+| --- | --- | --- |
+| `EPSG:32636` | WGS 84 / UTM 36N — le SCR de travail du cours, en mètres | presque exacte |
+| `EPSG:3857` | WGS 84 / Pseudo-Mercator — cartes web et fonds de carte | gonflée plusieurs fois |
+| `ESRI:102025` | Albers pour l'Asie du Nord — équivalente | exacte, même loin de « sa » zone |
+| `EPSG:4326` | WGS 84, latitude et longitude — en degrés | ce n'est pas une surface du tout |
+| `$area` | calcul **sur l'ellipsoïde**, sans projection | la référence |
+
+<Callout type="tip" title="Une idée à emporter de cette séance">
+
+Le nombre affiché par QGIS est toujours « juste » — pour le système de
+coordonnées dans lequel il a été calculé. La question n'est pas de savoir
+si QGIS s'est trompé, mais **si vous lui avez donné le bon système**.
+
+</Callout>
+
+---
+
+## Partie 1. Un nouveau projet, et où vivent les couches (~20 min) || Partie 1. Projet et SCR
+
+Aujourd'hui on repart de zéro : un nouveau projet, avec la limite de votre
+municipalité.
+
+### Étape 1 — Préparez le dossier
+
+Dans votre dossier de cours, créez un dossier `Seance03`, et à l'intérieur
+deux sous-dossiers :
+
+```
+Seance03/
+├── data/      ici — le contenu de l'archive
+└── output/    ici — tout ce que vous rendrez
+```
+
+Décompressez l'archive `Занятие03_данные.zip` dans `data`. Vérifiez qu'il
+s'y trouve `tver.gpkg` et cinq fichiers `topo100k_tver` avec des
+extensions différentes.
+
+### Étape 2 — Créez et enregistrez le projet
+
+1. Lancez QGIS → **Projet → Nouveau** (`Ctrl+N`).
+2. Tout de suite **Projet → Enregistrer sous…** → dossier `Seance03`,
+   nom `Nom_SCR.qgz`.
+
+Enregistrer le projet vide tout de suite au bon endroit — c'est la même
+hygiène qu'à la séance 1 : tous les chemins vers les données seront alors
+**relatifs**, et le projet s'ouvrira sur n'importe quel ordinateur.
+
+### Étape 3 — Ajoutez les limites des municipalités
+
+1. **Couche → Ajouter une couche → Ajouter une couche vecteur…** (`Ctrl+Shift+V`).
+2. Dans le champ **Jeu(x) de données vectorielles**, cliquez sur **…** et
+   choisissez `data\tver.gpkg`.
+3. **Ajouter**. QGIS demandera quelles couches prendre — sélectionnez
+   seulement `boundary_mo` et cliquez sur **OK**.
+4. Fermez la fenêtre d'ajout.
+
+Toutes les municipalités de l'oblast apparaissent sur la carte. Dans le
+panneau « Couches », la couche s'appelle `tver — boundary_mo` : d'abord
+le nom du fichier, puis celui de la couche.
+
+### Étape 4 — Ne gardez que votre municipalité
+
+Vous l'avez déjà fait à la séance 1. Petit rappel :
+
+1. Clic droit sur la couche `tver — boundary_mo` → **Filtrer…**
+2. En bas de la fenêtre, dans le champ de la requête, écrivez (en mettant
+   votre territoire) :
+
+```sql
+"name_short" = 'Кесовогорский'
+```
+
+3. **Tester** — QGIS dira combien d'objets correspondent.
+   Il doit y en avoir **un**.
+4. **OK**. Clic droit sur la couche → **Zoomer sur la couche**.
+
+<Callout type="tip" title="Aide-mémoire du filtre">
+
+- Le **champ** — entre guillemets doubles : `"name_short"`. La **valeur** —
+  entre apostrophes : `'Кесовогорский'`. Si vous les inversez, vous aurez
+  une erreur.
+- Dans `name_short`, le nom est **sans** « муниципальный округ » :
+  `'Бежецкий'`, `'Торжокский'`, `'Тверь'`. Le nom complet est dans le
+  champ `name`.
+- Vous ne vous rappelez plus l'orthographe exacte de votre territoire ?
+  Dans la fenêtre du filtre, cliquez sur le champ `name_short` dans la
+  liste **Champs**, puis sur **Tout** sous la liste **Valeurs** — et
+  choisissez le vôtre par un double-clic.
+- Le filtre ne supprime rien du fichier, il cache seulement le superflu.
+  L'icône d'entonnoir à côté de la couche indique qu'un filtre est actif.
+
+</Callout>
+
+<Figure src="images/crs-and-georeferencing/01-filter.png"
+        alt="Constructeur de requête avec une expression de filtre sur le champ name_short"
+        caption="Champ name_short → bouton « Tout » → double-clic sur sa valeur. Le signe « = » est parmi les opérateurs" />
+
+### Étape 5 — Ajoutez un fond de carte
+
+Bouton **QuickMapServices** de la barre d'outils → **OSM → OSM Standard**.
+
+Si le bouton n'y est pas, l'extension n'est pas installée : **Extensions →
+Installer/Gérer les extensions…**, cherchez `QuickMapServices` →
+**Installer l'extension** (comme à la séance 1). Faites glisser le fond de
+carte tout en bas de la liste des couches.
+
+### Étape 6 — Trouvez le SCR du projet
+
+Regardez le **coin inférieur droit** de la fenêtre QGIS, dans la barre
+d'état. Il y est écrit `EPSG:32636`.
+
+Vous ne l'avez pas choisi : **la première couche ajoutée fixe le SCR du
+projet**. La limite issue de `tver.gpkg` est en 32636 — et le projet
+s'est aligné sur elle.
+
+Cliquez sur cette inscription : l'onglet **SCR** des propriétés du projet
+s'ouvre. Ne changez rien, regardez seulement : `WGS 84 / UTM zone 36N` est
+sélectionné. Fermez la fenêtre avec **Annuler**.
+
+<Figure src="images/crs-and-georeferencing/02-project-crs.png"
+        alt="Barre d'état de QGIS, EPSG:32636 dans le coin inférieur droit"
+        caption="Le SCR du projet est dans le coin inférieur droit. Il a été fixé par la première couche ajoutée" />
+
+### Étape 7 — Trouvez le SCR de la couche
+
+Chaque couche a son propre SCR, qui n'est pas obligé de coïncider avec
+celui du projet.
+
+1. Clic droit sur `tver — boundary_mo` → **Propriétés…**
+2. À gauche, choisissez l'onglet **Source**.
+3. Le champ **SCR assigné** indique dans quel SCR les coordonnées sont
+   stockées dans le fichier.
+
+Pour `boundary_mo`, c'est `EPSG:32636`. Vérifiez maintenant le fond de
+carte : lui est en `EPSG:3857`. Les couches sont dans des systèmes
+différents, et pourtant elles se superposent à l'écran.
+
+<Figure src="images/crs-and-georeferencing/03-layer-crs.png"
+        alt="Propriétés de la couche OSM Standard, onglet « Source »"
+        caption="Propriétés → Source : le SCR assigné du fond OSM est EPSG:3857" />
+
+<Callout type="attention" title="Comment ça marche : la reprojection à la volée">
+
+QGIS prend chaque couche et **recalcule à la volée** ses coordonnées dans
+le SCR du projet. C'est pourquoi le fond en 3857 et la limite en 32636
+tombent l'un sur l'autre.
+
+Les fichiers, eux, **ne changent pas**. Si vous donnez la couche du fond à
+quelqu'un, elle sera toujours en 3857. On en parle dans la partie 4.
+
+</Callout>
+
+### Étape 8 — Réglez la façon dont QGIS mesure
+
+1. **Projet → Propriétés…** → onglet **Général**.
+2. Dans le bloc **Mesures** :
+   - **Ellipsoïde** (pour les calculs de distance et de surface) — `WGS 84` ;
+   - **Unités pour les mesures de distance** — `Kilomètres` ;
+   - **Unités pour les mesures de surface** — `Kilomètres carrés`.
+3. **OK**, puis enregistrez le projet (`Ctrl+S`).
+
+Désormais, toutes les mesures « de référence » seront calculées sur
+l'ellipsoïde, en kilomètres.
+
+<Figure src="images/crs-and-georeferencing/04-measurements.png"
+        alt="Propriétés du projet, onglet « Général », bloc « Mesures »"
+        caption="Ellipsoïde WGS 84, distances en kilomètres, surfaces en kilomètres carrés" />
+
+<Troubleshoot>
+
+**Le filtre affiche « 0 entité ».**
+Le nom n'est pas écrit comme dans les données : une espace en trop, « е »
+au lieu de « ё », le nom complet au lieu du nom court. Prenez la valeur
+dans la liste avec le bouton **Tout** au lieu de la taper à la main.
+
+**Erreur dans le filtre juste après « Tester ».**
+Les guillemets sont inversés : le champ entre guillemets doubles, la valeur
+entre apostrophes.
+
+**Dans le coin inférieur droit, ce n'est pas `EPSG:32636` mais autre chose.**
+Vous avez ajouté le fond de carte en premier, pas la limite — et le projet
+a pris son 3857. Cliquez sur l'inscription, tapez `32636` dans le champ
+**Filtre**, choisissez `WGS 84 / UTM zone 36N` → **Appliquer** → **OK**.
+
+**L'ellipsoïde est grisé dans la liste, impossible de le choisir.**
+Le projet n'a pas de SCR — corrigez-le comme au point précédent, et la
+liste deviendra active.
+
+</Troubleshoot>
+
+<Checkpoint title="fin de la partie 1">
+
+- Le projet `Nom_SCR.qgz` est enregistré dans le dossier `Seance03`
+- La couche `boundary_mo` est filtrée, il n'y a qu'un territoire sur la carte — le vôtre
+- En bas à droite, il est écrit `EPSG:32636`
+- La limite de la municipalité est en `EPSG:32636`, le fond de carte en `EPSG:3857`
+- Dans les propriétés du projet : ellipsoïde `WGS 84`, unités de surface — km²
+
+<Figure src="images/crs-and-georeferencing/05-my-mo.png"
+        alt="Limite d'une municipalité en contour rouge sur le fond OSM"
+        caption="Voilà ce qu'il faut avoir à la fin de la partie 1 : un seul territoire sur le fond de carte" />
+
+</Checkpoint>
+
+---
+
+## Partie 2. Une limite, quatre surfaces (~30 min) || Partie 2. Surface dans 4 SCR
+
+Le plan : on enregistre sa municipalité dans un fichier séparé, puis on
+calcule la surface cinq fois — la référence et quatre systèmes — et on
+regroupe les résultats dans un tableau.
+
+### Étape 9 — Enregistrez votre municipalité dans un fichier séparé
+
+On travaillera sur une copie — pour ne pas toucher au `tver.gpkg` commun.
+
+1. Clic droit sur la couche des limites → **Exporter →
+   Sauvegarder les entités sous…**
+2. Remplissez la fenêtre :
+
+| Champ | Ce qu'il faut mettre |
+| --- | --- |
+| **Format** | `GeoPackage` |
+| **Nom de fichier** | cliquez sur **…**, choisissez le dossier `data` de `Seance03`, nom `Nom_SCR.gpkg` |
+| **Nom de la couche** | `mo_utm` |
+| **SCR** | `EPSG:32636 - WGS 84 / UTM zone 36N` |
+
+3. Vérifiez qu'en bas la case **Ajouter le fichier sauvegardé à la carte**
+   est cochée.
+4. **OK**.
+
+Dans le panneau « Couches », `mo_utm` est apparue. Elle contient un seul
+polygone — votre municipalité.
+
+<Figure src="images/crs-and-georeferencing/06-save-as.png"
+        alt="Fenêtre « Sauvegarder la couche vectorielle sous… »"
+        caption="Format GeoPackage, fichier Nom_SCR.gpkg dans le dossier data, couche mo_utm, SCR EPSG:32636" />
+
+<Callout type="warning" title="Si la couche contient toutes les municipalités de l'oblast">
+
+Cela veut dire que le filtre n'était pas posé (étape 4) et que tout a été
+exporté. Retirez `mo_utm` du projet, sélectionnez votre municipalité avec
+l'outil **Sélectionner des entités** et refaites l'export en cochant
+**N'enregistrer que les entités sélectionnées**.
+
+</Callout>
+
+### Étape 10 — Enregistrez la même municipalité dans la projection des cartes web
+
+Exactement la même action, mais vers un autre SCR — c'est précisément la
+**reprojection** : QGIS recalcule les coordonnées de chaque sommet.
+
+1. Clic droit sur `mo_utm` → **Exporter → Sauvegarder les entités sous…**
+2. **Format** — `GeoPackage`, **Nom de fichier** — le même `Nom_SCR.gpkg`.
+3. **Nom de la couche** — `mo_3857`.
+4. **SCR** — cliquez sur le bouton de sélection à droite, tapez `3857`
+   dans le champ **Filtre**, choisissez `WGS 84 / Pseudo-Mercator`.
+5. **OK**.
+
+QGIS demandera quoi faire du fichier existant. Choisissez **Ajouter une
+nouvelle couche** — pas « Écraser » : sinon `mo_utm` disparaîtra.
+
+Rien n'a changé sur la carte : `mo_3857` tombe exactement sur `mo_utm`.
+La reprojection à la volée a de nouveau tout aligné. Mais à l'intérieur
+du fichier, ces deux couches ont **des nombres différents**.
+
+<Callout type="attention" title="Vérifiez de vos yeux">
+
+Activez l'outil **Identifier les entités** (l'icône « i » avec une flèche)
+et cliquez sur la municipalité — en sélectionnant d'abord `mo_utm` dans le
+panneau des couches, puis `mo_3857`. Dans la fenêtre des résultats,
+dépliez **(Dérivé)** : on y voit les coordonnées du clic. Remarquez à
+quel point les nombres diffèrent pour un même endroit.
+
+</Callout>
+
+### Étape 11 — La surface de référence
+
+Ouvrez la table d'attributs de `mo_utm` (`F6`) et cliquez sur **Ouvrir la
+calculatrice de champs** (l'icône du boulier avec une calculatrice, `Ctrl+I`).
+
+1. Cochez **Créer un nouveau champ**.
+2. **Nom** — `s_ell`.
+3. **Type** — `Nombre décimal (réel)`.
+4. Dans le champ de l'expression, écrivez :
+
+```
+$area
+```
+
+5. **OK**.
+
+QGIS a lui-même activé le mode édition et ajouté la colonne `s_ell`. Elle
+contient la surface de votre municipalité **sur l'ellipsoïde, en km²**
+(c'est ce que nous avons réglé à l'étape 8). C'est notre référence. Notez
+le nombre.
+
+<Figure src="images/crs-and-georeferencing/07-field-calc-area.png"
+        alt="Calculatrice de champs : nouveau champ s_ell avec l'expression $area"
+        caption="Nouveau champ s_ell, type « Nombre décimal », expression $area. En bas — l'« Aperçu » du résultat" />
+
+<Callout type="tip" title="$area et area($geometry), ce n'est pas la même chose">
+
+`$area` calcule sur l'**ellipsoïde**, dans les unités fixées dans les
+propriétés du projet. Le SCR de la couche lui est presque indifférent.
+
+`area($geometry)` calcule **sur le plan**, dans les unités du SCR de la
+couche. C'est la surface « naïve » — exactement ce qu'on obtient en
+prenant les coordonnées et en appliquant la formule de l'école. C'est
+elle qui dépend de la projection, et c'est elle que nous allons comparer.
+
+</Callout>
+
+### Étape 12 — La surface dans quatre SCR
+
+Restez dans la même couche `mo_utm`. Ajoutez quatre champs de plus de la
+même façon — **Créer un nouveau champ**, type `Nombre décimal (réel)`.
+
+**Champ `s_utm`** — la surface sur le plan UTM, en convertissant tout de
+suite les m² en km² :
+
+```
+area($geometry) / 1000000
+```
+
+**Champ `s_3857`** — la même limite, recalculée en Pseudo-Mercator :
+
+```
+area(transform($geometry, 'EPSG:32636', 'EPSG:3857')) / 1000000
+```
+
+**Champ `s_alb`** — dans la projection équivalente d'Albers :
+
+```
+area(transform($geometry, 'EPSG:32636', 'ESRI:102025')) / 1000000
+```
+
+**Champ `s_4326`** — en degrés. Inutile de diviser par un million : ici,
+ce ne sont pas des mètres.
+
+```
+area(transform($geometry, 'EPSG:32636', 'EPSG:4326'))
+```
+
+La fonction `transform()` fait la même chose que ce que vous avez fait à
+la main à l'étape 10 : elle reprojette la géométrie, simplement sans
+l'enregistrer dans un fichier.
+
+Cliquez sur **Enregistrer les modifications de la couche** (la disquette)
+et quittez le mode édition.
+
+<Figure src="images/crs-and-georeferencing/08-area-fields.png"
+        alt="Table d'attributs de mo_utm avec cinq champs de surface"
+        caption="Municipalité de Bejetsk : 2830 km² en UTM et sur l'ellipsoïde, presque 9900 « km² » en Pseudo-Mercator" />
+
+<Callout type="attention" title="Vérification de l'étape 10">
+
+Ouvrez la table de `mo_3857` et calculez-y `area($geometry) / 1000000`
+(inutile d'enregistrer le champ — regardez simplement le résultat dans la
+ligne **Aperçu** sous l'expression).
+Le nombre doit coïncider avec `s_3857` de `mo_utm`. S'il coïncide,
+l'enregistrement dans un autre SCR et `transform()` font bien la même chose.
+
+</Callout>
+
+### Étape 13 — Dressez le tableau et calculez l'écart
+
+L'écart à la référence, en pourcentage :
+
+```
+(surface dans le SCR − référence) / référence × 100
+```
+
+On peut le faire directement dans QGIS — un champ de plus, par exemple
+`d_3857` :
+
+```
+("s_3857" - "s_ell") / "s_ell" * 100
+```
+
+— ou bien dans Excel. Ce qui compte, c'est le résultat : un tableau de
+ce genre.
+
+| SCR | Surface | Écart à la référence |
+| --- | --- | --- |
+| référence, sur l'ellipsoïde | … km² | — |
+| `EPSG:32636` UTM 36N | … km² | … % |
+| `EPSG:3857` Pseudo-Mercator | … km² | … % |
+| `ESRI:102025` Albers | … km² | … % |
+| `EPSG:4326` degrés | … « degrés carrés » | non comparable |
+
+**Sous le tableau — une conclusion en une ligne.** Pas « les surfaces sont
+différentes », mais ce qui l'est exactement, et pourquoi. Par exemple :
+« En 3857, la surface de la municipalité est surestimée 3,4 fois, parce
+que Mercator étire tout vers le nord ; UTM et Albers s'écartent de la
+référence de moins de 0,2 % ».
+
+<Callout type="tip" title="Comment exporter les surfaces vers Excel">
+
+Inutile de recopier les nombres de la table d'attributs à la main — QGIS
+enregistre la couche directement en `.xlsx` :
+
+1. Clic droit sur `mo_utm` → **Exporter → Sauvegarder les entités sous…**
+2. **Format** — `MS Office Open XML spreadsheet [XLSX]`.
+3. **Nom de fichier** — cliquez sur **…**, choisissez le dossier `output`,
+   nom `Nom_surfaces.xlsx`.
+4. Décochez **Ajouter le fichier sauvegardé à la carte** — on n'a pas
+   besoin du tableau sur la carte.
+5. **OK**.
+
+QGIS n'envoie pas la géométrie dans Excel — le fichier ne contiendra que
+les champs, les cinq surfaces sur une seule ligne. Ouvrez
+`Nom_surfaces.xlsx` dans Excel (ou LibreOffice Calc), disposez les
+nombres en tableau comme ci-dessus, ajoutez l'écart et la conclusion.
+Enregistrez avec **Fichier → Enregistrer sous…** → type **Classeur Excel
+(\*.xlsx)**, dans le même dossier `output`.
+
+</Callout>
+
+<Callout type="tip" title="On peut se passer de formules">
+
+L'outil **Ajouter les attributs de géométrie** sait faire la même chose —
+c'est l'équivalent de Calculate Geometry dans ArcGIS. Il calcule la
+surface d'un clic, et on y choisit explicitement **comment** calculer :
+sur l'ellipsoïde ou dans le SCR de la couche. Il est présenté dans le
+bonus 1 — essayez-le si vous avez fini plus tôt.
+
+</Callout>
+
+<Callout type="tip" title="À quoi s'attendre — pour vous vérifier">
+
+- **UTM 36N** — de −0,1 à +0,2 %. À l'est de l'oblast (Kachine, Kimry,
+  Vessiegonsk), l'erreur est un peu plus grande : vous êtes plus loin du
+  méridien central de la zone.
+- **Pseudo-Mercator** — environ **+230…+250 %**. Oui, plus de trois fois.
+- **Albers** — des centièmes de pour cent. Une projection équivalente,
+  c'est fait pour ça.
+- **Degrés** — un nombre inférieur à un. Ce n'est pas une surface :
+  un « degré carré » à la latitude de Tver est un rectangle de 61 × 111 km.
+
+À titre d'exemple, municipalité de Bejetsk : référence 2829,7 km²,
+UTM +0,03 %, Pseudo-Mercator +249,8 %, Albers 0,00 %, en degrés 0,43.
+
+Vous obtenez tout autre chose ? Voyez le bloc ci-dessous.
+
+</Callout>
+
+<Troubleshoot>
+
+**Dans `s_ell`, un nombre énorme du genre 1 500 000 000.**
+Ce sont des m², pas des km² : à l'étape 8, les unités de surface n'ont
+pas été changées. Corrigez-les dans les propriétés du projet et recalculez
+le champ : choisissez **Mettre à jour un champ existant** → `s_ell`.
+
+**Le même nombre dans tous les champs.**
+Vous avez sans doute calculé `$area` au lieu de `area(...)`. `$area` est
+toujours calculé sur l'ellipsoïde, d'où le même résultat. Relisez les
+expressions de l'étape 12.
+
+**Erreur « Fonction inconnue » ou `NULL` dans `s_alb`.**
+Faute de frappe dans le code du SCR : il faut `'ESRI:102025'` — entre
+apostrophes, avec deux-points, sans espaces.
+
+**`s_utm` s'écarte de la référence de plusieurs dizaines de pour cent.**
+La couche n'est pas vraiment en 32636. Vérifiez **Propriétés → Source**
+(étape 7). S'il y a un autre code, mettez-le dans les expressions à la
+place de `'EPSG:32636'`.
+
+**La calculatrice de champs est grisée, rien ne répond.**
+La couche est ouverte en lecture seule, ou ce n'est pas la bonne couche.
+Travaillez dans `mo_utm` de votre `Nom_SCR.gpkg`, pas dans la couche
+commune `boundary_mo`.
+
+</Troubleshoot>
+
+<Checkpoint title="fin de la partie 2">
+
+- `Nom_SCR.gpkg` contient deux couches : `mo_utm` et `mo_3857`
+- La table de `mo_utm` contient cinq champs de surface : `s_ell`, `s_utm`, `s_3857`, `s_alb`, `s_4326`
+- En 3857, la surface dépasse la référence d'environ 3,4 fois
+- Le tableau « surface de la municipalité dans quatre SCR » est dressé, avec une conclusion d'une ligne en dessous
+
+<Figure src="images/crs-and-georeferencing/09-area-table.png"
+        alt="Tableau des surfaces avec l'écart en pourcentage"
+        caption="Tableau récapitulatif : une ligne avec l'écart à la référence en pourcentage" />
+
+</Checkpoint>
+
+---
+
+## Partie 3. La feuille de l'État-major sur votre territoire (~35 min) || Partie 3. Feuille topographique
+
+Les cartes topographiques soviétiques sont découpées en **feuilles**, et
+chacune a un numéro — sa **nomenclature**. Aujourd'hui, vous allez trouver
+le numéro de la feuille qui couvre votre municipalité, télécharger le scan
+de cette feuille et le géoréférencer.
+
+Un scan, ce n'est qu'une image : elle a des pixels, mais pas de
+coordonnées. **Géoréférencer**, c'est montrer à QGIS : « ce point de
+l'image — c'est ce point de la carte ».
+
+### Étape 14 — Ajoutez le tableau d'assemblage des feuilles
+
+1. **Couche → Ajouter une couche → Ajouter une couche vecteur…**
+2. Fichier `data\topo100k_tver.shp` → **Ajouter** → fermez la fenêtre.
+
+Une grille de rectangles est apparue sur l'oblast. Chaque rectangle est
+une feuille de carte au 1:100 000.
+
+Rendez-la lisible :
+
+1. **Propriétés** de la couche → **Symbologie** → **Remplissage simple** →
+   **Style de remplissage** : `Pas de brosse`, contour bleu foncé, `0.5` mm.
+2. **Étiquettes** → **Étiquettes simples** → **Valeur** : `nomenkl`.
+3. **OK**.
+
+Regardez maintenant **Propriétés → Source** du tableau d'assemblage. Le
+SCR de la couche est `EPSG:4284`, **Pulkovo 1942**. Les cartes de
+l'État-major ont été faites dans ce système, et la grille des feuilles
+est donc décrite dans ce système. QGIS l'a recalculée à la volée — et
+elle est tombée sur votre carte en UTM.
+
+<Figure src="images/crs-and-georeferencing/10-topo-grid.png"
+        alt="Tableau d'assemblage des feuilles au 1:100 000 avec les numéros, par-dessus la municipalité"
+        caption="La grille des feuilles avec leurs numéros, par-dessus votre municipalité" />
+
+<Callout type="tip" title="Comment lire un numéro de feuille">
+
+`O-36-120` se lit de gauche à droite, du plus grand au plus petit :
+
+- **O** — la rangée : la bande de latitudes 56°–60° N (les rangées vont par 4° depuis l'équateur : A, B, C…) ;
+- **36** — la colonne : la bande de longitudes 30°–36° E (colonnes de 6°) ;
+- **120** — le numéro de la feuille au 1:100 000 à l'intérieur de ce
+  trapèze. Il est divisé en 12 × 12 = 144 feuilles, numérotées de gauche
+  à droite et de haut en bas.
+
+Une feuille au 1:100 000, c'est 30′ en longitude et 20′ en latitude,
+soit environ 30 × 37 km à notre latitude.
+
+La lettre est un **O latin**. On l'écrit parfois avec un « О » cyrillique,
+c'est la même chose.
+
+</Callout>
+
+### Étape 15 — Trouvez les feuilles qui couvrent votre municipalité
+
+Il faut prendre dans la grille les feuilles qui touchent votre territoire.
+Pour cela, il existe la **sélection par localisation** — sélectionner les
+objets d'une couche selon leur position par rapport à une autre.
+
+1. **Vecteur → Outils de recherche → Sélection par localisation…**
+2. Remplissez la fenêtre :
+
+| Champ | Ce qu'il faut choisir |
+| --- | --- |
+| **Sélectionner les entités depuis** | `topo100k_tver` |
+| **Où les entités (prédicat géométrique)** | cochez `intersecte` |
+| **En comparant les entités de** | `mo_utm` — il ne contient que votre municipalité |
+| **Modifier la sélection actuelle en** | `créant une nouvelle sélection` |
+
+3. **Exécuter**, puis **Fermer**.
+
+Les feuilles qui touchent votre municipalité sont surlignées en jaune.
+Ouvrez la table d'attributs du tableau d'assemblage (`F6`) et, en bas à
+gauche, passez de **Afficher toutes les entités** à **Afficher les
+entités sélectionnées**. Voilà la liste des numéros de feuilles sur votre
+territoire — en général de deux à six.
+
+**Choisissez une seule feuille** — celle qui couvre la plus grande partie
+de votre municipalité ou celle où se trouve le chef-lieu. Notez son
+numéro, par exemple `O-36-120` ou `O-37-74`.
+
+<Figure src="images/crs-and-georeferencing/11-select-by-location.png"
+        alt="Fenêtre « Sélection par localisation »"
+        caption="Sélectionner les entités de topo100k_tver, prédicat « intersecte », en comparant avec mo_utm" />
+<Figure src="images/crs-and-georeferencing/12-selected-sheets.png"
+        alt="Feuilles sélectionnées du tableau d'assemblage, touchant la municipalité"
+        caption="Six feuilles sont sélectionnées. La plus grande partie de la municipalité est sur O-37-74" />
+
+<Callout type="tip" title="Pourquoi mo_utm et pas boundary_mo">
+
+`mo_utm` contient un seul objet — votre municipalité. On peut aussi
+comparer avec `boundary_mo`, mais il faut alors que le filtre de l'étape 4
+soit posé : l'outil ne regarde que les objets visibles. Si vous retirez
+le filtre, ce sont les feuilles de tout l'oblast qui seront sélectionnées.
+
+</Callout>
+
+### Étape 16 — Téléchargez la feuille
+
+Les scans des feuilles se trouvent dans l'archive ouverte satmaps.info.
+On trouve la bonne feuille en quatre clics — du plus grand au plus petit,
+exactement comme on lit le numéro.
+
+1. Ouvrez <a href="https://satmaps.info/genshtab.php" target="_blank" rel="noopener noreferrer">« Карты ГШ СССР » sur satmaps.info</a> (le site est en russe).
+2. Choisissez la **rangée** — la lettre `O`.
+3. Choisissez la **colonne** — `O36` ou `O37`.
+4. Choisissez l'**échelle** — `100K`.
+5. Dans la liste des feuilles, trouvez votre numéro et cliquez dessus.
+6. Sur la page de la feuille, cliquez sur **скачать скан карты**
+   (« télécharger le scan de la carte ») — pas sur « скачать привязку
+   Ozi » : le géoréférencement, nous le ferons nous-mêmes.
+7. Le site vous donne une image nommée par exemple `100k--o37-074.gif`.
+   Enregistrez-la dans `Seance03\data` sans changer son nom.
+
+<Callout type="attention" title="Sur le site, le numéro s'écrit un peu autrement">
+
+Sur satmaps, le numéro de feuille a toujours **trois chiffres** et n'a pas
+de premier tiret :
+
+| Dans le tableau d'assemblage | Sur le site |
+| --- | --- |
+| `O-36-120` | `O36-120` |
+| `O-37-74` | `O37-074` |
+| `O-36-9` | `O36-009` |
+
+Si une feuille a plusieurs variantes — `O37-029`, `O37-029--(1976)`,
+`O37-029--(1985)` —, ce sont des éditions différentes de la même feuille.
+Prenez n'importe laquelle et notez l'année d'édition : elle servira dans
+le devoir à la maison.
+
+</Callout>
+
+Raccourci si vous connaissez le numéro : l'adresse de la page de la
+feuille suit le modèle `https://satmaps.info/map.php?s=100k&map=o-37-074` —
+mettez votre numéro en minuscules et avec les zéros initiaux.
+
+Ouvrez l'image téléchargée dans une visionneuse ordinaire et trouvez les
+**quatre coins du cadre intérieur** — là où les lignes du cadre se
+rejoignent. À chaque coin sont inscrites la longitude et la latitude.
+Comparez-les avec le numéro : pour `O-36-120`, c'est 35°30′ — 36°00′ E et
+56°40′ — 57°00′ N.
+
+### Étape 17 — Activez l'accrochage aux coins des feuilles
+
+Les points d'appui, nous les prendrons directement sur les coins de la
+grille — c'est plus précis que de cliquer à l'œil. L'accrochage doit être
+activé **avant** d'ouvrir le géoréférenceur : ensuite, c'est peu pratique
+de basculer.
+
+1. Si la barre **Accrochage** n'est pas visible : **Vue → Barres
+   d'outils → Barre d'outils d'accrochage**.
+2. Cliquez sur l'**aimant** de cette barre — l'accrochage est activé.
+3. À côté, choisissez : `Couche active`, type `Sommet`,
+   tolérance `12` pixels.
+4. Dans le panneau « Couches », cliquez sur `topo100k_tver` pour en faire
+   la couche active.
+
+Amenez le curseur sur le coin d'une feuille — un petit carré rose
+apparaît : le curseur s'est accroché au sommet.
+
+### Étape 18 — Ouvrez la feuille dans le géoréférenceur
+
+**Couche → Géoréférenceur…** (dans certaines versions, l'entrée se trouve
+dans le menu **Raster**).
+
+Une fenêtre « Géoréférenceur » séparée s'ouvre. Dans celle-ci : **Fichier →
+Ouvrir un raster…** et choisissez votre `100k--o37-074.gif` (avec votre
+numéro).
+
+Si QGIS vous demande le système de coordonnées du raster, cliquez sur
+**OK** avec n'importe lequel : l'image n'en a pas de toute façon.
+
+<Figure src="images/crs-and-georeferencing/13-georeferencer.png"
+        alt="Fenêtre « Géoréférenceur » avec la feuille O-37-074 ouverte"
+        caption="La feuille dans la fenêtre de géoréférencement. En haut à gauche, le coin du cadre : 36°30′ E, 58°00′ N" />
+
+### Étape 19 — Réglez les paramètres de transformation
+
+**Paramètres → Paramètres de transformation…**
+
+| Champ | Ce qu'il faut choisir |
+| --- | --- |
+| **Type de transformation** | `Polynomiale 1` |
+| **Méthode de rééchantillonnage** | `Plus proche voisin` |
+| **SCR cible** | `EPSG:32636 - WGS 84 / UTM zone 36N` — le même que le projet |
+| **Raster en sortie** | `Seance03\data\Nom_feuille.tif` |
+| **Charger dans le projet une fois terminé** | case cochée |
+
+**OK**.
+
+<Callout type="attention" title="Pourquoi « Polynomiale 1 »">
+
+L'image peut être déplacée, tournée, étirée et inclinée, mais pas
+courbée. Pour un scan qui n'a pas été froissé, cela suffit, et **trois
+points** sont assez. Nous en mettrons quatre — le point en plus permet
+de voir l'erreur.
+
+</Callout>
+
+### Étape 20 — Placez les points aux coins du cadre
+
+Répétez pour **chacun des quatre coins** du cadre intérieur :
+
+1. Dans la fenêtre du géoréférenceur — **Édition → Ajouter un point**
+   (`Ctrl+A`).
+2. Zoomez sur le coin du cadre dans le scan et cliquez **exactement dans
+   le coin**, là où les lignes se rejoignent.
+3. Dans la fenêtre de saisie des coordonnées, cliquez sur **Depuis le
+   canevas de la carte** — le géoréférenceur se réduit.
+4. Dans la fenêtre principale, cliquez sur **le même coin de votre
+   feuille** dans la grille du tableau d'assemblage. Le curseur
+   s'accroche au sommet.
+5. La fenêtre du géoréférenceur revient avec les coordonnées remplies.
+   **Vérifiez le SCR sous les coordonnées** — il doit indiquer
+   `EPSG:32636`, comme le projet et comme le SCR cible de l'étape 19. → **OK**.
+
+Veillez à ce que le coin sur le scan et le coin sur la grille soient **le
+même** : nord-ouest avec nord-ouest, et ainsi de suite.
+
+<VideoEmbed provider="rutube" id="3a1d02a92008d9552acf8319d530ed56"
+            p="qNw-E7M7qamWq8hFxc4RTg"
+            title="Géoréférencement d'une feuille topographique dans QGIS" />
+
+<Callout type="warning" title="Un seul SCR partout">
+
+« Depuis le canevas de la carte » prend les coordonnées **dans le SCR du
+projet**. C'est pourquoi le projet est réglé à l'avance en `EPSG:32636`,
+et c'est ce même SCR qui doit figurer dans la fenêtre de saisie des
+coordonnées et dans les paramètres de transformation. Si la fenêtre de
+saisie affiche un autre SCR, ne le changez pas là : fermez le
+géoréférenceur, vérifiez le SCR du projet dans le coin inférieur droit et
+recommencez le point.
+
+Saisir les coordonnées des coins à la main en changeant de SCR dans
+cette fenêtre, nous le déconseillons : elle fonctionne de façon peu
+fiable.
+
+</Callout>
+
+<Callout type="tip" title="Surveillez le résidu">
+
+En bas de la fenêtre du géoréférenceur se trouve le panneau **Points de
+contrôle**. Après le quatrième point, des nombres apparaissent dans la
+colonne **Résidu (pixels)**. Quelques pixels, c'est normal. Si l'erreur
+d'un point est plusieurs fois plus grande que celle des autres, vous
+avez cliqué sur le mauvais coin ou vous l'avez manqué. Clic droit →
+**Supprimer** et replacez-le.
+
+</Callout>
+
+### Étape 21 — Lancez le géoréférencement et vérifiez
+
+1. **Fichier → Débuter le géoréférencement**. Au bout de quelques
+   secondes, `Nom_feuille.tif` apparaît dans la fenêtre principale.
+2. Fermez le géoréférenceur. À la question sur l'enregistrement des
+   points, répondez **Oui** — un fichier `.points` sera enregistré à côté
+   du scan.
+3. **Propriétés** du raster → **Transparence** → **Opacité** `60 %`.
+
+Vérifiez : les coins de la feuille coïncident avec les coins de la grille,
+et les rivières et routes de la feuille — avec le fond OSM. À moins de
+50 m près, c'est un excellent résultat.
+
+<Callout type="attention" title="C'est ici que le cours magistral a servi">
+
+La feuille a été faite en Pulkovo 1942, et le fond de carte est en
+WGS 84. Entre les deux, à notre latitude, il y a environ **120 mètres**.
+Ce décalage, vous ne l'avez pris en compte nulle part — QGIS l'a fait :
+la grille du tableau d'assemblage est écrite en Pulkovo, et en la
+recalculant à la volée, il l'a décalée là où il fallait. C'est pourquoi
+la feuille calée sur la grille est tombée juste.
+
+</Callout>
+
+<Troubleshoot>
+
+**La sélection par localisation a sélectionné les feuilles de tout l'oblast.**
+Vous avez comparé avec `boundary_mo` sans filtre. Dans le champ
+**En comparant les entités de**, choisissez `mo_utm` et relancez.
+
+**Rien n'a été sélectionné.**
+Dans le champ **En comparant les entités de**, ce n'est pas la bonne
+couche, ou le prédicat coché n'est pas `intersecte` mais, par exemple,
+`contient`.
+
+**Toute la feuille est décalée d'environ 120 m vers l'est ou l'ouest, mais sa forme est juste.**
+Les coins n'ont pas été pris sur le tableau d'assemblage, mais en
+cliquant « à l'œil » sur le fond de carte — ou bien le tableau
+d'assemblage a perdu son SCR (le `.prj` a disparu, et la couche est
+considérée comme WGS 84). C'est exactement la différence de datums du
+cours. Vérifiez **Propriétés → Source** de `topo100k_tver` : il doit y
+avoir `EPSG:4284`.
+
+**Le curseur ne s'accroche pas aux coins de la grille.**
+L'accrochage a été activé après l'ouverture du géoréférenceur, ou la
+couche active n'est pas la bonne. Fermez le géoréférenceur, cliquez sur
+`topo100k_tver` dans le panneau « Couches », vérifiez l'aimant de la
+barre d'accrochage et rouvrez le géoréférenceur.
+
+**Dans la fenêtre de saisie, les coordonnées sont en degrés, pas en mètres.**
+La fenêtre n'a pas le bon SCR. Voir le bloc « Un seul SCR partout »
+ci-dessus.
+
+**La feuille est retournée ou déformée.**
+Les coins sont inversés : le nord-ouest du scan a été associé à autre
+chose que le nord-ouest de la grille. Les points fautifs ont une erreur
+énorme — supprimez-les et replacez-les.
+
+**Le raster s'est envolé en Afrique ou dans l'océan.**
+L'un des points a des coordonnées carte vides ou nulles. Trouvez-le dans
+la table des points et replacez-le.
+
+**Le bouton « Débuter le géoréférencement » est inactif.**
+Le raster en sortie ou le type de transformation n'est pas défini.
+Revenez à l'étape 19.
+
+</Troubleshoot>
+
+<Checkpoint title="fin de la partie 3">
+
+- Le tableau d'assemblage est sur la carte, avec les numéros en étiquettes
+- Vous connaissez le numéro de votre feuille et savez expliquer chacune de
+  ses parties
+- Dans `data` se trouve `Nom_feuille.tif`, et à côté du scan — le `.points`
+- La feuille géoréférencée est tombée exactement dans sa case de la grille,
+  et les rivières coïncident avec le fond de carte
+
+</Checkpoint>
+
+---
+
+## Partie 4. Transmettre des données sans perte (~10 min) || Partie 4. Transmettre les données
+
+Dernière compétence : donner une couche de façon qu'elle s'ouvre chez
+quelqu'un d'autre **au bon endroit**, et pas en Afrique.
+
+### Étape 22 — Vérifiez que le SCR voyage avec le fichier
+
+1. Ouvrez un **nouveau projet vide** : **Projet → Nouveau** (`Ctrl+N`).
+   Enregistrer le projet en cours — oui.
+2. Faites glisser votre `Nom_SCR.gpkg` depuis l'explorateur de fichiers
+   directement sur la carte du nouveau projet. QGIS demandera quelles
+   couches ajouter — choisissez les deux.
+3. Ajoutez un fond de carte avec QuickMapServices.
+
+Les couches doivent tomber sur votre municipalité. Cela veut dire que
+**le SCR est enregistré à l'intérieur du GeoPackage**, et que toute
+personne à qui vous enverrez ce fichier verra la même chose.
+
+Pour le shapefile du tableau d'assemblage, le SCR voyage aussi avec
+lui — dans le petit fichier `topo100k_tver.prj`. Si vous perdez le `.prj`,
+QGIS ne saura pas que c'est du Pulkovo, et il faudra définir le SCR de la
+couche à la main.
+
+Fermez ce projet sans l'enregistrer et revenez au vôtre.
+
+### Étape 23 — Voyez à quoi ressemble l'erreur
+
+C'est une courte expérience pour reconnaître l'erreur au premier coup
+d'œil. Rouvrez d'abord votre `Nom_SCR.qgz` (**Projet → Projets récents**).
+
+1. Clic droit sur `mo_3857` → **SCR de la couche → Définir le SCR de la
+   couche…**
+2. Choisissez `EPSG:32636` → **OK**.
+
+La couche s'est envolée. Les coordonnées dans le fichier n'ont pas
+changé — vous avez seulement changé l'**étiquette** : « ces nombres sont
+en mètres UTM ». Or les nombres étaient en mètres Mercator, et QGIS les
+a honnêtement placés là où ils pointent.
+
+Remettez l'étiquette : **Définir le SCR de la couche** → `EPSG:3857`. La
+couche est revenue.
+
+<Callout type="warning" title="La règle principale de la partie 4">
+
+**Définir le SCR** change l'étiquette, les nombres restent. Ce n'est utile
+que si l'étiquette s'est perdue (shapefile sans `.prj`, CSV) et que vous
+savez exactement quel était le SCR.
+
+**Sauvegarder les entités sous… avec un nouveau SCR** recalcule les
+nombres. C'est ça, la reprojection.
+
+Les confondre — c'est l'erreur la plus fréquente de tout le cours.
+
+</Callout>
+
+<Troubleshoot>
+
+**Dans le nouveau projet, les couches ne sont pas tombées au bon endroit.**
+Vous n'avez probablement pas enregistré en GeoPackage à l'étape 9.
+Vérifiez l'extension du fichier : elle doit être `.gpkg`.
+
+**Après « Définir le SCR », la couche n'est pas revenue.**
+Vérifiez que vous avez bien remis `EPSG:3857`, et pas `EPSG:4326`. Si vous
+vous êtes perdu — retirez `mo_3857` du projet et réenregistrez-la à partir
+de `mo_utm`, comme à l'étape 10.
+
+</Troubleshoot>
+
+---
+
+## Bonus 1. La surface sans formules
+
+QGIS a un outil qui fait la même chose que vos expressions de la partie 2,
+mais d'un clic. Dans ArcGIS, il s'appelle Calculate Geometry ; dans QGIS,
+**Ajouter les attributs de géométrie**.
+
+1. **Vecteur → Outils de géométrie → Ajouter les attributs de géométrie…**
+2. **Couche source** — `mo_3857`.
+3. **Calculer en utilisant** — `SCR de la couche`.
+4. **Exécuter**.
+
+Une couche temporaire apparaît avec de nouveaux champs — dont `area`.
+Ouvrez la table : la surface en m², sur le plan de Mercator — les fameux
+×3,4.
+
+Relancez l'outil sur la même couche, mais dans le champ **Calculer en
+utilisant**, choisissez `Ellipsoïde`. Cette fois, `area` coïncidera avec
+votre référence `s_ell` — simplement en m² et non en km².
+
+La conclusion est la même qu'à la partie 2 : ce qui compte, ce n'est pas
+seulement **quoi** calculer, mais aussi **comment**. Ici, le choix est
+directement dans la fenêtre — vérifiez-le à chaque fois.
+
+## Bonus 2. Le fond Yandex et 20 kilomètres
+
+Ajoutez avec QuickMapServices le fond de carte Yandex en même temps que
+OSM, et comparez un même endroit. Si Yandex est branché comme une couche
+XYZ ordinaire, il glisse vers le sud d'environ 20 km.
+
+Ce n'est pas un bug de Yandex : ses tuiles sont en `EPSG:3395` (Mercator
+sur l'ellipsoïde), et non en `EPSG:3857` (Mercator sur la sphère).
+La différence entre les deux surfaces de référence, à notre latitude,
+la voilà.
+
+## Bonus 3. Votre municipalité dans la zone 37
+
+Si votre municipalité est à l'est de l'oblast (à l'est de 36° E), ajoutez
+un champ de plus avec la surface en `EPSG:32637` et comparez-le avec
+`s_utm`. Quelle zone est la plus précise pour votre territoire — et de
+combien ?
+
+## Bonus 4. De combien Pulkovo s'est-il « décalé »
+
+Placez sur le fond de carte un point près du chef-lieu de votre
+municipalité. Ajoutez à sa table deux champs de coordonnées :
+
+```
+x(transform($geometry, 'EPSG:32636', 'EPSG:4284'))
+x(transform($geometry, 'EPSG:32636', 'EPSG:4326'))
+```
+
+La différence de longitude, à votre latitude, fait environ 120 mètres.
+C'est exactement de cela que les vieilles cartes soviétiques sont « à côté »
+par rapport au GPS.
+
+---
+
+<Submit deadline="avant la fin de la séance" where="LMS, devoir « Séance 3 »">
+
+**Ce qu'il faut envoyer** — depuis le dossier `output` :
+
+- `Nom_surfaces.xlsx` (ou une capture de la table d'attributs de
+  `mo_utm`) — le tableau « surface de la municipalité dans quatre SCR »
+  avec l'écart en pourcentage **et une conclusion d'une ligne** sous le
+  tableau ;
+- `Nom_feuille.png` — une capture de la feuille géoréférencée sur le fond
+  de carte, avec le numéro de la feuille en étiquette (**Projet →
+  Importer/Exporter → Exporter la carte au format image…**).
+
+**Ce que le projet `Nom_SCR.qgz` doit contenir :**
+
+- `boundary_mo` filtrée sur votre municipalité ;
+- les couches `mo_utm` et `mo_3857` de `Nom_SCR.gpkg` ;
+- le tableau d'assemblage `topo100k_tver` avec les numéros en étiquettes ;
+- la feuille géoréférencée `Nom_feuille.tif`, tombée à sa place.
+
+</Submit>
+
+## Ce que nous avons appris
+
+- Le **projet** et **chaque couche** ont leur propre système de
+  coordonnées. QGIS **reprojette à la volée** : à l'écran tout coïncide,
+  et les fichiers ne changent pas.
+- **`$area`** calcule sur l'ellipsoïde et convient presque toujours.
+  **`area($geometry)`** calcule sur le plan et dépend de la projection.
+- En **Pseudo-Mercator**, à la latitude de Tver, la surface est
+  surestimée d'environ **3,4 fois**. On ne mesure pas dedans.
+- **UTM** et les projections **équivalentes** donnent la surface avec une
+  erreur de quelques dixièmes de pour cent.
+- Une surface en degrés n'est pas une surface.
+- Les cartes topographiques de l'URSS sont découpées en **feuilles
+  numérotées** : `O-36-120` — rangée O, colonne 36, feuille 120. On trouve
+  la bonne feuille par une **sélection par localisation** sur la couche du
+  tableau d'assemblage.
+- **Géoréférencer un raster**, ce sont des paires « point du scan — point
+  de la carte ». Pour une carte topographique, les meilleurs points
+  d'appui sont **les coins du cadre** : leurs coordonnées sont connues
+  exactement.
+- Les vieilles feuilles sont en **Pulkovo 1942**. Si l'on prend les coins
+  dans une couche au bon SCR, QGIS tient compte lui-même du décalage
+  d'environ 120 m par rapport au WGS 84.
+- Le **GeoPackage** stocke le SCR à l'intérieur du fichier — on peut
+  transmettre les données sans perte.
+- **Définir le SCR ≠ reprojeter.** Le premier change l'étiquette, le
+  second — les nombres.
+
+La suite — séance 4 : le contrôle, puis les tableaux. Nous joindrons les
+statistiques de Rosstat à vos municipalités et construirons votre première
+vraie carte thématique.
