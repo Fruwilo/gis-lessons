@@ -1,0 +1,986 @@
+---
+title: "Deux cartes : à la main et par une table"
+description: "On saisit à la main la population de 38 municipalités dans la table attributaire et on construit une carte choroplèthe de la densité. Puis on récupère depuis Excel sept autres indicateurs en une minute, on trouve une erreur dans le tableau officiel et on assemble une carte « choroplèthe + diagrammes » dans une mise en page A4."
+duration: "~1 h 30"
+tools: ["QGIS", "Excel"]
+# difficulty и topics — канонические ключи (одинаковые во всех языках):
+# difficulty переводится при выводе, topics используются фильтром на главной
+difficulty: "новичок"
+qgis: "3.40 et plus récent"
+topics: ["тематические карты", "таблица атрибутов", "связь таблиц", "картограмма", "картодиаграмма", "макет"]
+order: 4
+cover: "images/thematic-maps/cp3-layout.png"
+lang: "fr"
+translationOf: "thematic-maps"
+---
+
+<Callout type="info" title="Ce qu'il vous faut">
+
+**Le logiciel :** QGIS **3.40 LTR** — le même qu'aux séances précédentes.
+Et Excel (LibreOffice Calc convient aussi).
+
+**Les données :** <a href="https://disk.yandex.ru/d/k9FPCXbuc-7q0g" target="_blank" rel="noopener noreferrer">l'archive « Занятие04_данные.zip »</a>.
+Elle contient trois fichiers :
+
+- `mo_tver.gpkg` — les limites des 40 municipalités (MO) de l'oblast
+  de Tver. Le SCR est déjà le bon — `EPSG:32636`. La table n'a que deux
+  champs : le numéro `id` et le nom `name`. Aucun nombre — c'est vous qui
+  les ajouterez aujourd'hui ;
+- `Статистика по районам.xlsx` — la population des municipalités en 2024.
+  Vous en recopierez les nombres **à la main** ;
+- `data_region.xlsx` — sept autres indicateurs pour chaque municipalité :
+  natalité, mortalité, migrations. Vous les récupérerez
+  **automatiquement**.
+
+**Le résultat de la séance :** une carte thématique A4 en PDF et en PNG.
+
+</Callout>
+
+<Callout type="tip" title="Les noms de menus dans cette leçon">
+
+Tous les chemins de menus sont donnés **pour QGIS en français**. Les
+**noms des couches et des champs** (`mo_tver`, `pop2024`…), les
+**valeurs dans les tables** (`Бежецкий муниципальный округ`…) et les
+**en-têtes des tableaux Excel** viennent des données elles-mêmes :
+ils restent en russe.
+
+</Callout>
+
+## Aide-mémoire : deux cartes et une règle
+
+Aujourd'hui, vous ferez la même opération de deux façons — et vous
+sentirez la différence.
+
+| | Carte 1 | Carte 2 |
+| --- | --- | --- |
+| Ce qu'elle montre | la densité de population | l'accroissement naturel et les migrations |
+| D'où viennent les nombres | **à la main** : vous recopiez 38 nombres depuis Excel | **par jointure** : QGIS trouve lui-même la ligne par le numéro de la municipalité |
+| Combien de temps | ~15 minutes pour un indicateur | ~1 minute pour sept indicateurs |
+| Mode de représentation | choroplèthe | choroplèthe + diagrammes |
+
+<Callout type="tip" title="La règle qui justifie à elle seule de venir en cours">
+
+La **carte choroplèthe** (les municipalités sont colorées) — **seulement
+pour des valeurs relatives** : par km², pour 1000 habitants, en
+pourcentage.
+
+La **carte à diagrammes** (cercles ou barres dans chaque municipalité) —
+pour des valeurs **absolues** : personnes, roubles, unités.
+
+Colorer les municipalités selon le nombre d'habitants est une erreur :
+un district étendu « crie » par sa couleur, même s'il y a peu de monde.
+C'est pourquoi on commencera par diviser la population par la surface.
+
+</Callout>
+
+---
+
+## Partie 1. À la main : un champ, une carte (~30 min) || Partie 1. À la main
+
+### Étape 1 — Préparez le dossier
+
+Dans votre dossier de cours, créez un dossier `Seance04`, et à l'intérieur
+deux sous-dossiers :
+
+```
+Seance04/
+├── data/      ici — le contenu de l'archive
+└── output/    ici — tout ce que vous rendrez
+```
+
+Décompressez `Занятие04_данные.zip` dans `data`. Vérifiez qu'il s'y trouve
+trois fichiers : `mo_tver.gpkg` et deux `.xlsx`.
+
+### Étape 2 — Créez et enregistrez le projet
+
+1. QGIS → **Projet → Nouveau** (`Ctrl+N`).
+2. Tout de suite **Projet → Enregistrer sous…** → dossier `Seance04`,
+   nom `Nom_Cartes.qgz`.
+
+Enregistrer le projet vide tout de suite — c'est désormais l'hygiène
+habituelle : les chemins vers les données seront relatifs, et le projet
+s'ouvrira sur n'importe quel ordinateur.
+
+### Étape 3 — Ajoutez les limites des municipalités
+
+1. **Couche → Ajouter une couche → Ajouter une couche vecteur…** (`Ctrl+Shift+V`).
+2. **Jeu(x) de données vectorielles** → bouton **…** → `data\mo_tver.gpkg` →
+   **Ajouter**.
+3. Fermez la fenêtre.
+
+Sur la carte — tout l'oblast de Tver, découpé en 40 municipalités. Dans le
+panneau « Couches », la couche `mo_tver` est apparue. En bas à droite —
+`EPSG:32636`.
+
+<Callout type="attention" title="Pourquoi tout l'oblast aujourd'hui, et pas seulement votre municipalité">
+
+Une carte thématique fonctionne par **comparaison** : la densité de votre
+municipalité ne veut dire quelque chose que si l'on voit les voisines.
+Vous mettrez la vôtre en évidence dans un bonus à la fin.
+
+</Callout>
+
+### Étape 4 — Jetez un œil à la table attributaire
+
+Clic droit sur la couche `mo_tver` → **Ouvrir la Table d'Attributs** (`F6`).
+
+40 lignes — une par municipalité. Deux colonnes : `id` et `name`. **Il n'y
+a rien pour construire une carte thématique** : les entités n'ont pas un
+seul nombre. Nous allons en ajouter un.
+
+Ne fermez pas la table — on continue à travailler dedans.
+
+### Étape 5 — Ajoutez un champ pour la population
+
+1. Dans la barre d'outils de la table, cliquez sur le crayon — **Basculer
+   en mode d'édition** (`Ctrl+E`). Les boutons de la barre « se
+   réveillent ».
+2. Cliquez sur **Nouveau champ** (`Ctrl+W`).
+3. Remplissez la fenêtre :
+   - **Nom** — `pop2024`
+   - **Type** — `Nombre entier (entier)`
+4. **OK**.
+
+À droite de la table, la colonne `pop2024` est apparue, avec `NULL` dans
+chaque ligne.
+
+<Callout type="tip" title="Qu'est-ce que NULL">
+
+`NULL` — « pas de valeur ». Ce n'est pas zéro : zéro, c'est « zéro
+habitant », et `NULL`, c'est « on ne sait pas combien ». QGIS les
+distingue, et vous aussi, distinguez-les.
+
+Écrivez le nom du champ **en caractères latins, sans espaces, court**.
+Il sera alors facile à insérer dans une formule, et il ne cassera pas
+quand on transmettra le fichier.
+
+</Callout>
+
+{/* Скриншот ещё не снят — раскомментировать, когда появится файл.
+<Figure src="images/thematic-maps/01-new-field.png"
+        alt="Fenêtre « Nouveau champ » : nom pop2024, type Nombre entier"
+        caption="Nouveau champ : nom en caractères latins, type — nombre entier" />
+*/}
+
+### Étape 6 — Recopiez la population depuis Excel
+
+1. Ouvrez `data\Статистика по районам.xlsx` dans Excel. Placez les
+   fenêtres d'Excel et de la table attributaire côte à côte.
+2. Dans la table attributaire, cliquez sur l'en-tête de la colonne
+   `name` — les lignes se rangent par ordre alphabétique. Dans Excel
+   elles sont aussi rangées par ordre alphabétique, c'est plus simple.
+3. Pour chaque municipalité, trouvez sa ligne dans Excel et saisissez le
+   nombre de la colonne **« Оценка численности населения, на 2024 г. »**
+   (estimation de la population en 2024) dans la cellule `pop2024` :
+   double-clic sur la cellule → le nombre → `Entrée`.
+
+<Callout type="attention" title="Comment faire correspondre les noms">
+
+- Dans Excel, le nom est court : `Бежецкий`. Dans QGIS — complet :
+  `Бежецкий муниципальный округ`.
+- **Тверь** et **Торжок** commencent dans QGIS par les mots
+  « городской округ » (« arrondissement urbain ») — au tri, elles se
+  retrouveront à la lettre « г ».
+- **Торжок** (la ville) et **Торжокский** (le district autour) — ce sont
+  deux municipalités différentes.
+- **ЗАТО Озёрный** et **ЗАТО Солнечный** (villes fermées) ne sont pas
+  dans Excel. Laissez-leur `NULL`.
+
+Au total : 38 nombres et 2 cellules vides.
+
+</Callout>
+
+Oui, c'est long. C'est voulu : retenez combien de minutes il vous a fallu
+pour un seul indicateur. Dans la partie 2, vous en récupérerez **sept**
+en une minute.
+
+<Troubleshoot>
+
+**Impossible de saisir un nombre — la cellule ne s'ouvre pas.**
+Le mode d'édition n'est pas activé. Cliquez sur le crayon de la barre de
+la table (`Ctrl+E`).
+
+**Le nombre ne rentre pas, QGIS proteste.**
+Vous avez tapé une espace dans le nombre (`9 731`) ou copié le nombre
+depuis Excel avec les espaces de séparation. Tapez les chiffres d'affilée :
+`9731`.
+
+**Le nombre est allé dans la mauvaise ligne.**
+Double-clic sur la cellule, corrigez, `Entrée`. Tant que les modifications
+ne sont pas enregistrées, tout peut être rattrapé. Si vous êtes vraiment
+perdu — le bouton **Annuler** (`Ctrl+Z`) de la fenêtre principale de QGIS
+annule une saisie à la fois.
+
+**Les lignes ont « sauté » après la saisie.**
+La table est triée par `pop2024`. Cliquez sur l'en-tête `name` pour revenir
+à l'ordre alphabétique.
+
+</Troubleshoot>
+
+### Étape 7 — Enregistrez les modifications et vérifiez-vous
+
+1. Dans la barre de la table, cliquez sur **Enregistrer les modifications**
+   (`Ctrl+S`).
+2. Désactivez le crayon — **Basculer en mode d'édition**.
+3. Cliquez sur l'en-tête `pop2024` : la table se trie par population.
+
+Vérification : `NULL` doit rester dans **exactement deux** lignes — les
+villes fermées (ZATO). En haut (ou en bas) de la liste — Tver, environ
+413 000 habitants.
+
+### Étape 8 — Calculez la surface des municipalités
+
+Densité = population / surface. La table n'a pas de surface — calculons-la.
+
+1. Dans la barre de la table, cliquez sur **Ouvrir la calculatrice de
+   champ** (l'icône du boulier, `Ctrl+I`). Si QGIS pose une question sur
+   le mode d'édition — acceptez.
+2. Cochez **Créer un nouveau champ**.
+3. **Nom** — `area_km2`. **Type** — `Nombre décimal (réel)`.
+   **Précision** — `1`.
+4. Dans le champ **Expression**, écrivez :
+
+```
+$area / 1000000
+```
+
+5. **OK**. Ensuite **Enregistrer les modifications** et désactivez le
+   crayon.
+
+<Callout type="tip" title="Vous le savez déjà depuis la séance 3">
+
+`$area` calcule la surface **sur l'ellipsoïde**, en mètres carrés. On
+divise par un million — on obtient des km². Pour vérifier : Tver —
+environ 153 km², la municipalité de Калининский — environ 4195 km².
+
+</Callout>
+
+### Étape 9 — Calculez la densité
+
+Encore une fois **la calculatrice de champ** → **Créer un nouveau champ** :
+
+- **Nom** — `density`
+- **Type** — `Nombre décimal (réel)`, **Précision** — `1`
+- **Expression** :
+
+```
+"pop2024" / "area_km2"
+```
+
+**OK** → **Enregistrer les modifications** → désactiver le crayon.
+
+Triez par `density`. En bas de l'échelle — Бельский et Лесной, environ
+2,3 hab./km². En haut — Tver, environ 2700 hab./km². **Mille fois** plus —
+retenez-le, cela va servir tout de suite.
+
+<Troubleshoot>
+
+**Dans `area_km2`, des nombres comme 0,003.**
+Dans les propriétés du projet, les unités de surface sont déjà en km² —
+comme à la séance 3. Alors il ne faut pas diviser : recalculez le champ
+avec l'expression `$area`, en choisissant **Mise à jour d'un champ
+existant** → `area_km2`.
+
+**Dans `density`, partout `NULL`.**
+Le champ `pop2024` n'a pas été enregistré (étape 7), ou il y a une faute
+de frappe dans le nom du champ. Les noms de champs vont entre guillemets
+**doubles**. Le plus simple est de ne pas les taper, mais de double-cliquer
+sur le champ dans la liste **Champs et valeurs** au milieu de la fenêtre
+de la calculatrice.
+
+**La calculatrice de champ est grisée.**
+Elle est ouverte pour la table `.xlsx`, pas pour la couche. Ouvrez la
+table attributaire de la couche `mo_tver`.
+
+</Troubleshoot>
+
+### Étape 10 — Première choroplèthe : intervalles égaux
+
+1. Fermez la table. Double-clic sur la couche `mo_tver` → les
+   **Propriétés de la couche** s'ouvrent. À gauche, choisissez l'onglet
+   **Symbologie** (le pinceau).
+2. Dans la liste déroulante du haut, à la place de **Symbole unique**,
+   choisissez **Gradué**.
+3. **Valeur** — `density`.
+4. **Palette de couleurs** — cliquez sur la flèche à droite et choisissez
+   `OrRd` ou `Reds` : du clair au foncé.
+5. En bas : **Mode** — `Intervalle égal`, **Classes** — `5`.
+6. **Classer** → **Appliquer**.
+
+Regardez la carte. Presque tout l'oblast est **d'une seule couleur pâle**,
+et seule Tver est foncée. La carte dit : « dans l'oblast, on ne vit qu'à
+Tver ».
+
+Pourquoi : QGIS a coupé l'échelle de 2 à 2705 en cinq **segments égaux**
+d'environ 540. Dans le premier segment, « de 2 à 543 », sont tombées 36
+municipalités sur 38.
+
+{/* Скриншот ещё не снят — раскомментировать, когда появится файл.
+<Figure src="images/thematic-maps/02-graduated.png"
+        alt="Propriétés de la couche, onglet Symbologie : Gradué, champ density, mode Intervalle égal"
+        caption="Gradué : le champ, la palette, le mode, le nombre de classes" />
+*/}
+
+### Étape 11 — Essayez d'autres méthodes de classification
+
+Ne fermez pas la fenêtre des propriétés. Changez le **Mode**, en cliquant
+à chaque fois sur **Classer** → **Appliquer**, et regardez la carte :
+
+| Mode | Comment il découpe | Ce que ça donne |
+| --- | --- | --- |
+| `Intervalle égal` | l'échelle — en segments égaux | Tver contre toutes les autres |
+| `Nombre égal (Quantile)` | les municipalités — autant dans chaque classe | la carte est bariolée, mais Tver et Конаковский sont dans la même classe, alors qu'elles diffèrent d'un facteur 80 |
+| `Ruptures naturelles (Jenks)` | cherche les « ruptures » dans les données | Tver et Торжок ont pris deux classes sur cinq |
+
+Ouvrez l'onglet **Histogramme** sous la table des classes → **Charger les
+valeurs**. On voit pourquoi aucun mode n'est idéal : 36 points se sont
+massés près de zéro, et deux sont partis loin à droite.
+
+<Figure src="images/thematic-maps/classifications.png"
+        alt="Quatre cartes de la densité de population de l'oblast de Tver avec différentes méthodes de classification"
+        caption="Les mêmes données, quatre classifications. La dernière — des limites choisies à la main, on les fixe à l'étape 12" />
+
+### Étape 12 — Fixez vos propres limites
+
+Quand les données sont aussi irrégulières, le cartographe fixe les limites
+lui-même — avec des nombres « ronds », faciles à lire dans la légende.
+
+1. **Mode** — `Nombre égal (Quantile)`, **Classes** — `5` → **Classer**.
+2. Double-cliquez sur la première ligne dans la colonne **Valeurs**. La
+   fenêtre **Entrez les limites de classe** s'ouvre. Mettez **Valeur
+   haute** — `5`. **OK**.
+3. Corrigez de même les autres classes, pour obtenir :
+
+| Classe | Basse | Haute |
+| --- | --- | --- |
+| 1 | 2,1 | 5 |
+| 2 | 5 | 10 |
+| 3 | 10 | 20 |
+| 4 | 20 | 100 |
+| 5 | 100 | 2705 |
+
+4. **Appliquer** → **OK**.
+
+Maintenant la carte en dit plus. On voit une bande de municipalités plus
+densément peuplées le long de la voie ferrée Moscou — Saint-Pétersbourg :
+Конаковский, Калининский, Лихославльский, Вышневолоцкий, Бологовский.
+À part, se détachent Ржевский et Кимрский. Et le nord-est et l'ouest de
+l'oblast — moins de 5 habitants par km².
+
+<Callout type="attention" title="C'est ici que le cours magistral sert">
+
+Le choix des classes est une **décision du cartographe**, pas un réglage
+« par défaut ». Les mêmes nombres donnent la carte « on ne vit qu'à
+Tver » ou la carte « la densité baisse du centre vers les marges ». Une
+carte honnête, c'est celle dont vous pouvez expliquer pourquoi les limites
+sont précisément celles-là.
+
+</Callout>
+
+### Étape 13 — Montrez « pas de données »
+
+Les villes fermées ont une densité `NULL`, et QGIS ne les dessine tout
+simplement pas — il y a des trous sur la carte. Le lecteur croira qu'il
+n'y a rien là. Il faut une couche grise « pas de données » sous la
+choroplèthe.
+
+1. Clic droit sur `mo_tver` → **Dupliquer la couche**. Une copie apparaît :
+   `mo_tver copie`.
+2. Clic droit sur la copie → **Renommer la couche** → `pas de données`.
+3. Propriétés de la copie → **Symbologie** → **Symbole unique**. Couleur
+   de remplissage — gris clair, contour — blanc. **OK**.
+4. Faites glisser `pas de données` **sous** `mo_tver`.
+
+Les trous sont devenus gris, et la ligne « pas de données » est apparue
+dans la légende.
+
+5. Renommez aussi `mo_tver` lui-même — c'est sous ce nom qu'il apparaîtra
+   dans la légende de la carte : `Densité de population, hab./km²`.
+6. **Projet → Enregistrer** (`Ctrl+S`).
+
+<Checkpoint title="fin de la partie 1">
+
+- La table `mo_tver` a trois nouveaux champs : `pop2024`, `area_km2`, `density`
+- `NULL` dans `pop2024` — seulement pour les deux villes fermées
+- La couche est colorée selon `density` en cinq classes : 5 / 10 / 20 / 100 / 2705
+- En dessous — la couche grise `pas de données`, les villes fermées sont grises
+- Le projet est enregistré sous `Nom_Cartes.qgz`
+
+<Figure src="images/thematic-maps/cp1-density.png"
+        alt="Choroplèthe de la densité de population de l'oblast de Tver : Tver et Torjok foncées, le centre et le sud-est moyens, l'ouest et le nord-est pâles"
+        caption="Voilà à quoi cela doit ressembler chez vous" />
+
+</Checkpoint>
+
+<Rescue href="https://disk.yandex.ru/d/E_vtO93vR-jj8Q" step="après la partie 1">
+À l'intérieur — un projet avec la couche où la population est déjà saisie,
+la densité calculée et le style réglé. Décompressez-le dans `Seance04`,
+ouvrez `Спасатель_часть1.qgz` et tout de suite **Projet → Enregistrer
+sous…** → `Nom_Cartes.qgz`. Les couches et le style y sont nommés en russe.
+</Rescue>
+
+---
+
+## Partie 2. Automatiquement : jointure avec un tableau Excel (~25 min) || Partie 2. Jointure avec Excel
+
+Rappelez-vous combien de minutes a pris un seul champ. Et s'il y a sept
+indicateurs ? Ou s'il faut refaire la même chose dans un an avec de
+nouveaux chiffres ?
+
+Il y a mieux : dire à QGIS « prends la table et, pour chaque municipalité,
+trouve-y la ligne qui porte le même numéro ». Cela s'appelle une
+**jointure** (join en anglais). Si vous avez déjà utilisé **RECHERCHEV**
+(VLOOKUP) dans Excel — c'est exactement la même opération.
+
+Pour que la jointure marche, il faut une **clé** — un champ dont la
+valeur est écrite de la même façon dans la couche et dans la table.
+Chez nous, c'est le numéro de la municipalité : `id` dans la couche,
+`ID` dans Excel.
+
+### Étape 14 — Regardez la table et trouvez la clé
+
+Ouvrez `data\data_region.xlsx` dans Excel.
+
+- La première colonne `ID` — les mêmes numéros que dans le champ `id` de
+  la couche : Tver — 52, Бологовский — 53, etc. **C'est la clé.**
+- La deuxième colonne `Name_GIS` — le nom. On pourrait croire qu'on peut
+  joindre sur lui. Mais regardez les lignes de près :
+  `Весьегонский муниципальный окрукк`, `Калязинский муниципальный округг`,
+  et chez Лихославльский — une double espace. Pour QGIS, ce sont
+  **d'autres** chaînes, elles ne correspondront pas au nom dans la couche.
+
+<Callout type="warning" title="Joignez par le numéro, pas par le nom">
+
+Les noms sont écrits par des gens, et les gens se trompent : une faute de
+frappe, une espace en trop, « е » au lieu de « ё », « район » au lieu de
+« округ ». Un numéro — `52` — il est difficile de s'y tromper. Dans les
+données réelles, la clé est un code : le code OKTMO pour une
+municipalité, le numéro cadastral pour une parcelle, le code FIAS pour
+une adresse.
+
+</Callout>
+
+### Étape 15 — Donnez des noms courts aux colonnes
+
+Les en-têtes de la table sont longs : « Общий коэффициент рождаемости,
+промилле » (taux brut de natalité, pour mille). Dans QGIS, ils
+deviendraient des noms de champs — avec des espaces et des virgules,
+peu pratiques à insérer dans les formules. Renommons-les.
+
+1. Cliquez sur la cellule `A1`.
+2. Réécrivez les en-têtes de la première ligne ainsi :
+
+| Colonne | Avant | Après |
+| --- | --- | --- |
+| A | ID | `ID` |
+| B | Name_GIS | `name_gis` |
+| C | Name | `name_stat` |
+| D | Общая площадь земель…, гектар (surface, ha) | `area_ha` |
+| E | Общий коэффициент рождаемости, промилле (natalité, ‰) | `birth` |
+| F | Естественный прирост (убыль), человек (accroissement naturel, pers.) | `nat` |
+| G | Общий коэффициент естественного прироста (убыли), промилле (taux d'accroissement naturel, ‰) | `nat_rate` |
+| H | Общий коэффициент смертности, промилле (mortalité, ‰) | `death` |
+| I | Оценка численности населения…, человек (population, pers.) | `pop` |
+| J | Число прибывших, человек (arrivées, pers.) | `arr` |
+| K | Число выбывших, человек (départs, pers.) | `dep` |
+| L | Миграционный прирост, человек (solde migratoire, pers.) | `mig` |
+
+Inutile de taper à la main : copiez la ligne ci-dessous, cliquez sur `A1`
+et collez — Excel répartira lui-même les mots dans les cellules.
+
+```
+ID	name_gis	name_stat	area_ha	birth	nat	nat_rate	death	pop	arr	dep	mig
+```
+
+3. **Enregistrez** le fichier (gardez le format `.xlsx`) et **fermez
+   Excel**.
+
+<Callout type="tip" title="Pour mille — c'est pour mille habitants">
+
+**‰ (pour mille)** — combien de cas pour 1000 habitants. Une natalité de
+7,2 ‰ — dans l'année, il est né 7,2 enfants pour mille habitants. C'est
+déjà une valeur **relative** — on peut la mettre directement sur une
+choroplèthe.
+
+</Callout>
+
+### Étape 16 — Ajoutez la table dans QGIS
+
+1. **Couche → Ajouter une couche → Ajouter une couche vecteur…**
+2. **Jeu(x) de données vectorielles** → **…** → `data\data_region.xlsx` →
+   **Ajouter**.
+
+Dans le panneau « Couches », `data_region` est apparue (QGIS peut ajouter
+le nom de la feuille : `data_region — Лист2`). Son icône est une
+**table**, pas un polygone : il n'y a pas de géométrie, elle ne dessine
+rien sur la carte.
+
+Ouvrez sa table attributaire (`F6`). Les en-têtes sont vos noms courts.
+Les nombres sont alignés **à droite** — QGIS a donc compris que ce sont
+des nombres.
+
+### Étape 17 — Joignez la table à la couche
+
+1. Double-clic sur la couche `mo_tver` → **Propriétés de la couche** →
+   onglet **Jointures** (l'icône de deux maillons reliés).
+2. En bas, cliquez sur le **+** vert.
+3. Remplissez la fenêtre **Ajouter une jointure vectorielle** :
+   - **Joindre la couche** — `data_region`
+   - **Champ de jointure** — `ID` (le champ de la table Excel)
+   - **Champ dans la couche cible** — `id` (le champ de la couche)
+4. Cochez **Champs joints** et, dans la liste, ne cochez que sept champs :
+   `area_ha`, `birth`, `nat_rate`, `death`, `arr`, `dep`, `mig`.
+5. Cochez **Personnaliser le préfixe du nom du champ** et **effacez** le
+   texte dans le champ à droite — qu'il reste vide. Sinon chaque champ
+   recevra le préfixe `data_region_`.
+6. **OK** → **OK**.
+
+{/* Скриншот ещё не снят — раскомментировать, когда появится файл.
+<Figure src="images/thematic-maps/03-join.png"
+        alt="Fenêtre d'ajout de jointure : couche data_region, champ de jointure ID, champ cible id, sept champs cochés, préfixe vide"
+        caption="La jointure : quoi prendre, sur quel champ chercher, à quel champ rattacher" />
+*/}
+
+### Étape 18 — Vérifiez ce qui a été récupéré
+
+Ouvrez la table attributaire de `mo_tver`. À droite — sept nouvelles
+colonnes, remplies en une seconde. Comparez avec la partie 1.
+
+Pour les deux villes fermées, les nouveaux champs sont vides : leurs
+lignes n'existent pas dans la table Excel, il n'y a rien à chercher.
+C'est normal.
+
+<Troubleshoot>
+
+**Les nouvelles colonnes sont vides pour toutes les municipalités.**
+Les champs sont inversés : le champ de jointure — `ID` de la table, le
+champ cible — `id` de la couche. Supprimez la jointure (bouton **−** dans
+l'onglet **Jointures**) et recréez-la.
+
+**`data_region` n'est pas dans la liste « Joindre la couche ».**
+La table n'a pas été ajoutée au projet (étape 16), ou elle a été ajoutée
+avec une erreur. Vérifiez qu'elle est bien dans le panneau « Couches ».
+
+**Les champs s'appellent `Field1`, `Field2`…**
+QGIS n'a pas reconnu les en-têtes : dans la première ligne d'Excel, il y a
+une cellule vide ou un nombre. Vérifiez la ligne d'en-têtes, enregistrez,
+retirez la table du projet et ajoutez-la à nouveau.
+
+**Les champs s'appellent `data_region_birth`…**
+Le préfixe est resté. Propriétés de la couche → **Jointures** → double-clic
+sur la jointure → effacez le préfixe.
+
+</Troubleshoot>
+
+### Étape 19 — Trouvez l'erreur dans le tableau officiel
+
+Les données qui ont l'air officielles peuvent elles aussi contenir des
+erreurs. Vérifions-les par un procédé simple : la table Excel contient la
+surface des municipalités en hectares, et vous avez calculé la surface
+vous-même dans la partie 1. Si la ligne est correcte, elles coïncideront
+presque.
+
+1. Table attributaire de `mo_tver` → **Ouvrir la calculatrice de champ**.
+2. Cochez **Créer un nouveau champ** et **Créer un champ virtuel** — il
+   sera calculé « à la volée » et ne modifiera pas le fichier.
+3. **Nom** — `check`, **Type** — `Nombre décimal (réel)`,
+   **Précision** — `2`.
+4. **Expression** :
+
+```
+"area_ha" / 100 / "area_km2"
+```
+
+(1 km² = 100 hectares).
+
+5. **OK**. Triez par `check`.
+
+Presque partout — de 0,98 à 1,03 : les surfaces concordent. Et une ligne
+détonne — **la municipalité de Кимрский : 0,37**. D'après la table, elle
+serait près de trois fois plus petite qu'en réalité.
+
+Regardez la ligne voisine — **Кесовогорский**. Tous leurs nombres sont
+identiques jusqu'au dernier chiffre. En remplissant la table, quelqu'un a
+copié la ligne de Кесовогорский dans Кимрский. Une population de 7324
+habitants pour la municipalité de Кимрский, alors que la seule ville de
+Kimry compte plus de 40 000 habitants — c'est une erreur évidente.
+
+<Callout type="warning" title="Pas de données vaut mieux que des données fausses">
+
+Nous n'avons pas les bons chiffres pour Кимрский. Garder ceux d'une autre
+municipalité, ce serait dessiner un mensonge sur la carte. C'est pourquoi,
+pour Кимрский, nous allons **effacer** les valeurs et montrer honnêtement
+« pas de données ».
+
+</Callout>
+
+### Étape 20 — Rendez la jointure permanente
+
+La jointure ne vit **que dans le projet** : si l'on déplace la couche dans
+un autre projet ou qu'on supprime `data_region.xlsx`, les nouveaux champs
+disparaissent. Pour rendre le travail, il faut un fichier autonome.
+
+1. Clic droit sur `mo_tver` → **Exporter → Sauvegarder les entités sous…**
+2. **Format** — `GeoPackage`.
+3. **Nom de fichier** — bouton **…** → dossier `output` → `Nom_Cartes.gpkg`.
+4. **Nom de la couche** — `mo_stat`.
+5. **SCR** — `EPSG:32636`.
+6. **OK**.
+
+La couche `mo_stat` est apparue dans le projet. Tous ses champs — ceux
+saisis à la main comme ceux récupérés par la jointure — sont désormais
+**réels**.
+
+Décochez `mo_tver` pour qu'elle ne gêne pas.
+
+### Étape 21 — Effacez les valeurs fausses de Кимрский
+
+1. Table attributaire de `mo_stat` → **Basculer en mode d'édition**.
+2. Trouvez la ligne **Кимрский муниципальный округ**.
+3. Dans les colonnes `area_ha`, `birth`, `nat_rate`, `death`, `arr`,
+   `dep`, `mig`, l'une après l'autre : double-clic sur la cellule →
+   effacez le nombre → `Entrée`. `NULL` apparaît dans la cellule.
+4. **Enregistrer les modifications**, désactivez le crayon.
+
+Ne touchez pas à la population `pop2024` ni à la densité `density` —
+vous les avez saisies vous-même à partir d'une autre table, correcte.
+
+### Étape 22 — La choroplèthe de l'accroissement naturel
+
+1. Propriétés de la couche `mo_stat` → **Symbologie** → **Gradué**.
+2. **Valeur** — `nat_rate`.
+3. **Palette de couleurs** — la même `OrRd`. Puis cliquez encore une fois
+   sur la flèche de la palette → **Inverser la palette de couleurs**.
+4. **Mode** — `Ruptures naturelles (Jenks)`, **Classes** — `4`.
+5. **Classer** → **Appliquer**.
+
+Toutes les valeurs sont **négatives** : dans chaque municipalité, il meurt
+plus de gens qu'il n'en naît. Ici, la couleur veut donc dire « à quel
+point la **décroissance** est forte » : les municipalités foncées — de
+−30 à −25 ‰, les claires — de −14 à −7 ‰. Nous avons inversé la palette
+pour que la décroissance la plus forte soit la plus foncée.
+
+La couche grise `pas de données` est toujours en dessous : Кимрский et
+les villes fermées sont devenues grises d'elles-mêmes.
+
+### Étape 23 — La carte à diagrammes des migrations
+
+Les migrations, on les montrera par des **cercles** : combien de
+personnes sont arrivées et parties. Ce sont des nombres absolus —
+c'est précisément pour eux qu'il faut des diagrammes.
+
+Propriétés de la couche `mo_stat` → onglet **Diagrammes**.
+
+1. Dans la liste du haut, à la place de **Aucun diagramme**, choisissez
+   **Diagramme en camembert**.
+2. Section **Attributs**. Dans la liste **Attributs disponibles**,
+   double-cliquez sur `arr`, puis sur `dep` — ils passent dans
+   **Attributs utilisés**.
+3. Au même endroit, double-cliquez sur la couleur de `arr` → bleu ; de
+   `dep` → clair. Dans la colonne **Légende**, écrivez : `arrivées` et
+   `départs`.
+4. Section **Taille** :
+   - choisissez **Taille variable** ;
+   - **Attribut** — cliquez sur le bouton `ε` à droite et saisissez
+     l'expression `"arr" + "dep"` → **OK** ;
+   - **Valeur maximale** — cliquez sur **Trouver** (23 551 apparaît :
+     c'est Tver) ;
+   - **Taille** — `20` mm ;
+   - **Échelle** — `Surface`.
+5. Section **Emplacement** → **Sur le centroïde**.
+6. Section **Légende** → cochez **Montrer les entrées de légende des
+   attributs de diagramme**. Cliquez sur **Entrées de la légende pour la
+   taille du diagramme…** → cochez **Légende repliée** → **OK**.
+7. **Appliquer** → **OK**.
+
+{/* Скриншот ещё не снят — раскомментировать, когда появится файл.
+<Figure src="images/thematic-maps/04-diagram-size.png"
+        alt="Propriétés de la couche, onglet Diagrammes, section Taille : Taille variable, expression arr + dep, valeur maximale 23551, taille 20 mm, échelle Surface"
+        caption="Le plus important dans les diagrammes — la section « Taille »" />
+*/}
+
+<Callout type="tip" title="Pourquoi « Surface »">
+
+L'œil compare les cercles par leur **surface**, pas par leur diamètre. Si
+une municipalité a quatre fois plus de migrants, son cercle doit être
+quatre fois plus grand **en surface** — c'est-à-dire deux fois plus large.
+Le mode `Surface` fait exactement cela. Le mode `Diamètre` gonflera les
+grands cercles et trompera le lecteur.
+
+</Callout>
+
+Regardez la carte. Le cercle de Tver est énorme — des milliers de gens
+arrivent et partent. Dans les petites municipalités, les cercles se
+voient à peine : quelques centaines de personnes y déménagent par an.
+Le secteur bleu dépasse la moitié seulement pour Tver, Калининский,
+Лихославльский, Рамешковский, Зубцовский et (de justesse) Оленинский —
+on y arrive plus qu'on n'en part. Dans toutes les autres municipalités,
+on part davantage.
+
+<Troubleshoot>
+
+**Les cercles ne sont pas apparus.**
+Le type de diagramme n'est pas choisi, ou la liste **Attributs utilisés**
+est vide. Vérifiez aussi la case **Afficher tous les diagrammes** dans la
+section **Rendu** : sans elle, QGIS cache les diagrammes qui se
+chevauchent.
+
+**Un cercle géant sur la moitié de l'oblast.**
+Dans **Taille**, c'est `Taille fixe` qui est choisi, ou vous avez oublié
+de cliquer sur **Trouver** — la valeur maximale est restée à zéro.
+Cliquez sur **Trouver**.
+
+**Tous les cercles ont la même taille.**
+C'est `Taille fixe` qui est choisi au lieu de `Taille variable`.
+
+**Le cercle de Tver recouvre la municipalité de Калининский.**
+C'est bien le cas : Калининский entoure Tver, leurs centres sont proches.
+On peut réduire la **Taille** à 15 mm. Il n'y a pas de solution
+parfaite — c'est un vrai problème des cartes à diagrammes.
+
+</Troubleshoot>
+
+<Checkpoint title="fin de la partie 2">
+
+- `output\Nom_Cartes.gpkg` contient la couche `mo_stat` avec les champs
+  `pop2024`, `area_km2`, `density` et sept champs venus d'Excel
+- Pour Кимрский, les champs venus d'Excel sont `NULL`, elle est grise sur la carte
+- `mo_stat` est colorée selon `nat_rate` en 4 classes, foncé — forte décroissance
+- Dans chaque municipalité — un camembert « arrivées / départs », taille selon la somme
+- `mo_tver` est désactivée, `pas de données` est tout en bas
+
+<Figure src="images/thematic-maps/cp2-migration.png"
+        alt="Choroplèthe de l'accroissement naturel avec des camemberts des migrations ; le plus grand cercle — Tver"
+        caption="Voilà à quoi cela doit ressembler chez vous" />
+
+</Checkpoint>
+
+<Rescue href="https://disk.yandex.ru/d/rSqva4Ayqmr_3g" step="après la partie 2">
+À l'intérieur — un projet avec la couche `mo_stat` : la jointure est déjà
+rendue permanente, l'erreur de Кимрский corrigée, la choroplèthe et les
+diagrammes réglés. Décompressez, ouvrez `Спасатель_часть2.qgz` et
+enregistrez-le sous votre nom.
+</Rescue>
+
+---
+
+## Partie 3. La mise en page : une carte qu'on n'a pas honte de rendre (~15 min) || Partie 3. Mise en page
+
+La fenêtre de QGIS est un bureau, pas une carte. La carte d'un rapport,
+d'un mémoire ou pour un commanditaire, on l'assemble dans une **mise en
+page** : une feuille de papier avec la carte, le titre, la légende,
+l'échelle et la source des données.
+
+### Étape 24 — Créez la mise en page
+
+1. **Projet → Nouvelle mise en page…**
+2. Nom — `Migrations` → **OK**.
+
+Une fenêtre à part s'ouvre, avec une feuille blanche A4 en paysage.
+
+### Étape 25 — Placez la carte
+
+1. **Ajouter un objet → Ajouter Carte**.
+2. Étirez à la souris un rectangle sur les deux tiers gauches de la
+   feuille, en laissant en haut une bande pour le titre.
+3. À droite, dans **Propriétés de l'objet**, trouvez **Échelle** et
+   choisissez un nombre rond pour que l'oblast tienne en entier : par
+   exemple `2000000`.
+4. Cochez **Verrouiller les couches** — la carte de la mise en page ne
+   changera plus si vous activez ou désactivez quelque chose dans la
+   fenêtre principale.
+
+Pour déplacer la carte à l'intérieur du cadre — l'outil **Déplacer le
+contenu** (`C`) dans la barre de gauche.
+
+### Étape 26 — Le titre
+
+1. **Ajouter un objet → Ajouter Étiquette**, étirez un cadre au-dessus de
+   la carte.
+2. Dans **Propriétés de l'objet**, dans le champ de texte, écrivez :
+   `Mouvement naturel et migratoire de la population des municipalités
+   de l'oblast de Tver`.
+3. **Police** — 16–18 pt, gras.
+
+Le titre répond à trois questions : **quoi** est montré, **où**, et — si
+c'est important — **quand**.
+
+### Étape 27 — La légende
+
+1. **Ajouter un objet → Ajouter Légende**, étirez-la à droite de la carte.
+2. Dans **Propriétés de l'objet**, section **Éléments de la légende** :
+   décochez **Mise à jour auto**.
+3. Sélectionnez les lignes inutiles — `data_region`, `mo_tver` — et
+   supprimez-les avec le bouton **−** sous la liste.
+4. Double-clic sur les lignes restantes — corrigez les libellés si
+   besoin. Par exemple, `mo_stat` → `Accroissement naturel, ‰`.
+5. **Titre** de la légende — `Légende`.
+
+### Étape 28 — L'échelle et le nord
+
+1. **Ajouter un objet → Ajouter Barre d'échelle** — placez-la dans un coin
+   inférieur de la carte. Dans les propriétés : **Unités de la barre
+   d'échelle** — `Kilomètres` ; dans la section **Segments** — largeur
+   d'un segment `25` km, segments à droite `2`, à gauche `0`.
+2. **Ajouter un objet → Ajouter Flèche du Nord** — petite, dans un coin
+   supérieur de la carte.
+
+### Étape 29 — La source et l'auteur
+
+**Ajouter un objet → Ajouter Étiquette** — sous la légende, en petits
+caractères (8–9 pt) :
+
+```
+Source : Rosstat, base de données des indicateurs des municipalités.
+Pas de données pour la municipalité de Kimry ni pour les villes fermées.
+Réalisation : Nom P., 2026
+```
+
+Ne supprimez pas la ligne sur les données manquantes : elle explique au
+lecteur ce que signifient les municipalités grises.
+
+### Étape 30 — L'export
+
+1. **Mise en page → Exporter au format PDF…** → dossier `output` →
+   `Nom_carte.pdf` → **Enregistrer** → dans la fenêtre des options
+   **Enregistrer**.
+2. **Mise en page → Exporter au format Image…** → `Nom_carte.png` →
+   **Résolution** — `300` dpi → **Enregistrer**.
+3. Revenez dans la fenêtre principale et enregistrez le projet
+   (`Ctrl+S`) : la mise en page est stockée dans le `.qgz`.
+
+Ouvrez le PDF et regardez la carte avec les yeux de quelqu'un qui n'était
+pas en cours. Comprend-on, sans vous, ce qu'elle montre ?
+
+<Checkpoint title="fin de la partie 3">
+
+- Dans `output` se trouvent `Nom_carte.pdf` et `Nom_carte.png`
+- Sur la feuille : le titre, la carte, une légende sans lignes inutiles,
+  la barre d'échelle, la flèche du nord, la source et l'auteur
+- La légende contient « pas de données » et les cercles-étalons des
+  tailles de diagrammes
+- Le projet est enregistré — la mise en page `Migrations` s'ouvre par
+  **Projet → Mises en page**
+
+<Figure src="images/thematic-maps/cp3-layout.png"
+        alt="Mise en page A4 terminée : titre, carte avec choroplèthe et diagrammes, légende à droite, échelle, flèche du nord, source"
+        caption="Exemple de mise en page terminée (version russe). La vôtre peut être agencée autrement — l'essentiel est d'avoir tous les éléments" />
+
+</Checkpoint>
+
+<Rescue href="https://disk.yandex.ru/d/NMJ-VQvw0B-XTw" step="après la partie 3">
+Le projet terminé, avec la mise en page et la carte exportée. Utile pour
+comparer avec la vôtre ou pour regarder les réglages des éléments de la
+mise en page.
+</Rescue>
+
+---
+
+## Bonus || Bonus
+
+Pour ceux qui ont fini plus tôt. Au choix.
+
+### Bonus 1. Mettez votre municipalité en évidence
+
+1. Clic droit sur `mo_stat` → **Dupliquer la couche**. Renommez la copie
+   en `Ma municipalité`.
+2. Clic droit sur la copie → **Filtrer…** →
+   `"name" = 'Кесовогорский муниципальный округ'` (mettez la vôtre ;
+   prenez la valeur avec le bouton **Tout** plutôt que de la taper).
+3. Propriétés de la copie → **Symbologie** → **Symbole unique**,
+   désactivez les **Diagrammes**. Remplissage — **Pas de remplissage**,
+   contour — rouge, `0,8` mm.
+4. Remontez la couche tout en haut. Dans la mise en page, décochez
+   **Verrouiller les couches** pour que le contour apparaisse, et
+   ajoutez-le à la légende.
+
+### Bonus 2. La carte 1 aussi en mise en page
+
+Faites une deuxième mise en page `Densité` avec la carte de la partie 1 :
+la couche `Densité de population, hab./km²` et `pas de données`. Le plus
+simple — **Projet → Gestionnaire de mises en page…** → sélectionnez
+`Migrations` → **Dupliquer…**, puis, dans la copie, changez les couches de
+la carte et le titre.
+
+### Bonus 3. Pourquoi une choroplèthe en valeurs absolues est une erreur
+
+Dupliquez `mo_stat` et colorez la copie selon `pop2024` (Jenks aussi, 5
+classes). Placez-la à côté de la carte de la densité. Quelles
+municipalités ont « foncé », et pourquoi ? La réponse en deux phrases —
+dans le commentaire du rendu.
+
+### Bonus 4. Du texte qui se fait passer pour un nombre
+
+Ouvrez `Статистика по районам.xlsx`. La colonne « Отгрузка » (expéditions
+de marchandises) ressemble à des nombres, mais Excel les aligne **à
+gauche** : c'est du texte. À l'intérieur — des espaces entre les milliers
+et une virgule.
+
+1. Sélectionnez la colonne → **Rechercher et remplacer** (`Ctrl+H`) →
+   rechercher une espace (si elle n'est pas trouvée, copiez l'espace
+   directement depuis une cellule : c'est une espace « insécable ») →
+   remplacer par rien → **Remplacer tout**.
+2. Les nombres se sont alignés à droite ? Excel les a donc compris.
+3. Réfléchissez : quelle valeur **relative** tirer des expéditions pour la
+   mettre sur une choroplèthe ? Indice : divisez par la population.
+
+C'est le travers le plus courant des statistiques « téléchargées sur un
+site » : avant de faire une carte, vérifiez que les nombres sont bien des
+nombres.
+
+---
+
+## Ce que nous avons appris
+
+- Une **carte thématique** commence par un nombre dans la table
+  attributaire. Pas de champ — rien à montrer.
+- On peut saisir les valeurs **à la main** : mode d'édition, nouveau
+  champ, saisie. C'est lent et propice aux fautes de frappe — bon pour
+  quelques nombres.
+- La **jointure** (join) récupère les champs d'une autre table par une
+  **clé**. C'est la même chose que RECHERCHEV dans Excel. La clé — un
+  numéro ou un code, pas un nom.
+- La jointure vit dans le projet. Pour obtenir un fichier autonome —
+  **Exporter → Sauvegarder les entités sous…**
+- La **calculatrice de champ** transforme des nombres absolus en
+  relatifs : densité = population / surface.
+- La **choroplèthe** — seulement pour des valeurs relatives. La **carte à
+  diagrammes** — pour des valeurs absolues ; les cercles se mettent à
+  l'échelle **par la surface**.
+- La **classification** est une décision du cartographe. Intervalles
+  égaux, quantiles et Jenks racontent, sur les mêmes données, des
+  histoires différentes.
+- « Pas de données » doit être montré explicitement — en gris et par une
+  ligne dans la légende.
+- Un tableau officiel peut lui aussi mentir. Un simple recoupement (la
+  surface de la table contre `$area`) attrape une ligne-doublon en une
+  minute.
+- La **mise en page** : titre, carte, légende, échelle, nord, source,
+  auteur.
+
+**Le devoir à la maison** — la même chose sur une carte des sujets de la
+Fédération de Russie : jointure, indicateur relatif sur la choroplèthe,
+un autre type de diagramme et cinq phrases sur ce que montre la carte.
+Les données :
+<a href="https://disk.yandex.ru/d/0M1oohbhdjb9KQ" target="_blank" rel="noopener noreferrer">l'archive « ДЗ04_регионы.zip »</a>
+(45 Mo), l'énoncé — dans le LMS.
+
+La suite — séance 5 : les parcelles, les catégories de terres et les
+usages autorisés. La symbologie par catégories y servira tout de suite.
+
+<Submit deadline="avant la fin de la séance" where="LMS, devoir « Séance 4 »">
+
+**Quoi :** `Nom_carte.pdf` et `Nom_carte.png` — une mise en page A4 avec
+la choroplèthe de l'accroissement naturel et les diagrammes des
+migrations.
+
+**En plus :** `Nom_Cartes.gpkg` avec la couche `mo_stat`.
+
+**Sur la carte, il doit y avoir :** un titre, une légende sans lignes
+inutiles, « pas de données » pour Кимрский et les villes fermées, une
+barre d'échelle, une flèche du nord, la source des données, votre nom.
+
+**Dans le commentaire du rendu :** en une ligne — quelle méthode de
+classification vous avez choisie pour la carte 1, et pourquoi.
+
+</Submit>
